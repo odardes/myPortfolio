@@ -20,6 +20,12 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
     );
   }
 
+  // Güncel değeri sadece son noktada göster (görseldeki gibi)
+  const chartData = data.map((d, index) => ({
+    ...d,
+    currentValue: index === data.length - 1 && d.currentValue ? d.currentValue : undefined
+  }));
+
   // Tarih formatını kısalt (ay.gün formatında)
   const formatChartDate = (dateString: string) => {
     try {
@@ -46,7 +52,7 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Zaman Bazında Performans</h3>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis 
             dataKey="date" 
@@ -75,6 +81,7 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
               borderRadius: '8px',
               padding: '8px',
             }}
+            filterNull={true}
           />
           <Legend 
             formatter={(value) => {
@@ -92,16 +99,22 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
             activeDot={{ r: 6 }}
             name="cumulativeInvested"
           />
-          {data.some(d => d.currentValue !== undefined) && (
+          {chartData.some(d => d.currentValue !== undefined && d.currentValue > 0) && (
             <Line
               type="monotone"
               dataKey="currentValue"
-              stroke="#10b981"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-              strokeDasharray="5 5"
+              stroke="transparent"
+              strokeWidth={0}
+              dot={(props: any) => {
+                // Sadece son noktada yeşil dot göster (görseldeki gibi)
+                if (props.payload?.currentValue !== undefined && props.payload.currentValue > 0) {
+                  return <circle cx={props.cx} cy={props.cy} r={5} fill="#10b981" />;
+                }
+                return null;
+              }}
+              activeDot={{ r: 7, fill: '#10b981' }}
               name="currentValue"
+              connectNulls={false}
             />
           )}
         </LineChart>

@@ -64,11 +64,23 @@ export function getInvestmentsSync(): Investment[] {
   
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return getInitialData();
+    if (!stored) {
+      // İlk yüklemede initial data'yı localStorage'a kaydet
+      const initialData = getInitialData();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
+      return initialData;
+    }
     const investments = JSON.parse(stored);
     return migrateInvestments(investments);
   } catch (error) {
-    return getInitialData();
+    // Hata durumunda initial data'yı döndür ve kaydet
+    const initialData = getInitialData();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
+    } catch (e) {
+      // Silent fail
+    }
+    return initialData;
   }
 }
 
@@ -134,14 +146,36 @@ export function saveFundCurrentValues(values: FundCurrentValue[]): void {
 function migrateInvestments(investments: Investment[]): Investment[] {
   return investments.map(inv => {
     // Eski type değerlerini yeni formata çevir
-    let type = inv.type;
-    if (type === 'gümüş' || type === 'altın') {
+    let type: Investment['type'] = inv.type;
+    let fundName = inv.fundName;
+    const typeStr = inv.type as string;
+    
+    // Eski kategori yapısından yeni yapıya geçiş
+    if (typeStr === 'gümüş') {
       type = 'fon';
+      if (fundName.includes('Gümüş')) {
+        fundName = 'Gümüş Fon';
+      }
+    } else if (typeStr === 'altın') {
+      // Altın Fon → fon, Altın (ALT) → döviz
+      if (fundName.includes('Altın Fon') || fundName.includes('GTA')) {
+        type = 'fon';
+        fundName = 'Altın Fon';
+      } else if (fundName === 'ALT' || fundName === 'Altın') {
+        type = 'döviz';
+        fundName = 'Altın';
+      }
+    } else if (typeStr === 'döviz') {
+      // USD → Dolar
+      if (fundName === 'USD' || fundName.includes('USD')) {
+        fundName = 'Dolar';
+      }
     }
     
     return {
       ...inv,
-      type: type as Investment['type'],
+      type,
+      fundName,
     };
   });
 }

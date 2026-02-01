@@ -193,16 +193,23 @@ export function calculateTimeSeriesData(
     });
   });
   
-  // Eğer fon değerleri varsa, son noktaya mevcut değer ekle
-  if (fundCurrentValues.length > 0 && result.length > 0) {
-    const lastPoint = result[result.length - 1];
-    const totalCurrentValue = calculateAllFundPerformance(investments, fundCurrentValues)
+  // Toplam güncel değeri hesapla (yatırımlardan direkt veya fundCurrentValues'tan)
+  let totalCurrentValue = 0;
+  
+  if (fundCurrentValues.length > 0) {
+    // FundCurrentValues varsa onu kullan
+    totalCurrentValue = calculateAllFundPerformance(investments, fundCurrentValues)
       .reduce((sum, fp) => sum + fp.currentValue, 0);
-    
-    if (totalCurrentValue > 0) {
-      lastPoint.currentValue = totalCurrentValue;
-      lastPoint.profitLoss = totalCurrentValue - lastPoint.cumulativeInvested;
-    }
+  } else {
+    // Yatırımlardan direkt currentValue'ları topla
+    totalCurrentValue = investments.reduce((sum, inv) => sum + (inv.currentValue || 0), 0);
+  }
+  
+  // Son noktaya mevcut değer ekle
+  if (totalCurrentValue > 0 && result.length > 0) {
+    const lastPoint = result[result.length - 1];
+    lastPoint.currentValue = totalCurrentValue;
+    lastPoint.profitLoss = totalCurrentValue - lastPoint.cumulativeInvested;
   }
   
   return result;
