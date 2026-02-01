@@ -1,14 +1,19 @@
 name: Deploy to Vercel
 
 on:
-  push:
-    branches: [ main ]
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
     steps:
       - name: Checkout code
@@ -22,9 +27,6 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
-      
-      - name: Run tests
-        run: npm test -- --watchAll=false
       
       - name: Build application
         run: npm run build
