@@ -1,0 +1,209 @@
+import { Investment, InvestmentSummary, PortfolioStats, InvestmentType, FundCurrentValue, FundPerformance } from '@/types/investment';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return format(date, 'dd.MM.yyyy', { locale: tr });
+  } catch {
+    return dateString;
+  }
+}
+
+export function calculateSummary(investments: Investment[]): InvestmentSummary[] {
+  const summaryMap = new Map<Investment['type'], InvestmentSummary>();
+
+  investments.forEach((investment) => {
+    const existing = summaryMap.get(investment.type) || {
+      type: investment.type,
+      totalAmount: 0,
+      count: 0,
+      investments: [],
+    };
+
+    existing.totalAmount += investment.amount;
+    existing.count += 1;
+    existing.investments.push(investment);
+
+    summaryMap.set(investment.type, existing);
+  });
+
+  return Array.from(summaryMap.values()).sort((a, b) => b.totalAmount - a.totalAmount);
+}
+
+export function calculatePortfolioStats(investments: Investment[]): PortfolioStats {
+  const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
+  
+  const byType: Record<string, number> = {};
+  const byFund: Record<string, number> = {};
+
+  investments.forEach((investment) => {
+    byType[investment.type] = (byType[investment.type] || 0) + investment.amount;
+    byFund[investment.fundName] = (byFund[investment.fundName] || 0) + investment.amount;
+  });
+
+  return {
+    totalInvested,
+    byType: byType as PortfolioStats['byType'],
+    byFund,
+  };
+}
+
+export function getTypeColor(type: InvestmentType): string {
+  const colors: Record<InvestmentType, string> = {
+    fon: 'bg-green-500',
+    döviz: 'bg-blue-500',
+    hisse: 'bg-orange-500',
+    diğer: 'bg-purple-500',
+  };
+  return colors[type] || 'bg-gray-400';
+}
+
+export function getTypeBgColor(type: InvestmentType): string {
+  const bgColors: Record<InvestmentType, string> = {
+    fon: 'bg-green-50 dark:bg-green-900/20',
+    döviz: 'bg-blue-50 dark:bg-blue-900/20',
+    hisse: 'bg-orange-50 dark:bg-orange-900/20',
+    diğer: 'bg-purple-50 dark:bg-purple-900/20',
+  };
+  return bgColors[type] || 'bg-gray-50 dark:bg-gray-800';
+}
+
+export function getTypeLabel(type: InvestmentType): string {
+  const labels: Record<InvestmentType, string> = {
+    fon: 'Fon',
+    döviz: 'Döviz',
+    hisse: 'Hisse Senedi',
+    diğer: 'Diğer',
+  };
+  return labels[type] || type;
+}
+
+// Format percentage
+export function formatPercentage(value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+// Kar/Zarar hesaplama
+export function calculateProfitLoss(investment: Investment): {
+  profitLoss: number;
+  profitLossPercentage: number;
+} {
+  if (!investment.currentValue || investment.currentValue === 0) {
+    return { profitLoss: 0, profitLossPercentage: 0 };
+  }
+  
+  const profitLoss = investment.currentValue - investment.amount;
+  const profitLossPercentage = investment.amount > 0 
+    ? (profitLoss / investment.amount) * 100 
+    : 0;
+  
+  return { profitLoss, profitLossPercentage };
+}
+
+// Fon bazında performans hesaplama
+export function calculateFundPerformance(
+  fundName: string,
+  type: InvestmentType,
+  investments: Investment[],
+  fundCurrentValues: FundCurrentValue[]
+): FundPerformance {
+  const fundInvestments = investments.filter(
+    inv => inv.fundName === fundName && inv.type === type
+  );
+  
+  const totalInvested = fundInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+  
+  // Fon için mevcut değer bul
+  const fundValue = fundCurrentValues.find(
+    fv => fv.fundName === fundName && fv.type === type
+  );
+  
+  const currentValue = fundValue?.currentValue || 0;
+  const profitLoss = currentValue - totalInvested;
+  const profitLossPercentage = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
+  
+  return {
+    fundName,
+    type,
+    totalInvested,
+    currentValue,
+    profitLoss,
+    profitLossPercentage,
+    investmentCount: fundInvestments.length,
+  };
+}
+
+// Tüm fonlar için performans hesapla
+export function calculateAllFundPerformance(
+  investments: Investment[],
+  fundCurrentValues: FundCurrentValue[]
+): FundPerformance[] {
+  const fundMap = new Map<string, { type: InvestmentType; fundName: string }>();
+  
+  investments.forEach(inv => {
+    const key = `${inv.type}-${inv.fundName}`;
+    if (!fundMap.has(key)) {
+      fundMap.set(key, { type: inv.type, fundName: inv.fundName });
+    }
+  });
+  
+  return Array.from(fundMap.values()).map(({ type, fundName }) =>
+    calculateFundPerformance(fundName, type, investments, fundCurrentValues)
+  );
+}
+
+// Zaman serisi verisi hesaplama
+export interface TimeSeriesDataPoint {
+  date: string;
+  cumulativeInvested: number;
+  currentValue?: number;
+  profitLoss?: number;
+}
+
+export function calculateTimeSeriesData(
+  investments: Investment[],
+  fundCurrentValues: FundCurrentValue[]
+): TimeSeriesDataPoint[] {
+  // Tarihe göre sırala
+  const sortedInvestments = [...investments].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  
+  const result: TimeSeriesDataPoint[] = [];
+  let cumulativeInvested = 0;
+  
+  // Her yatırım için kümülatif tutarı hesapla
+  sortedInvestments.forEach(inv => {
+    cumulativeInvested += inv.amount;
+    result.push({
+      date: inv.date,
+      cumulativeInvested,
+    });
+  });
+  
+  // Eğer fon değerleri varsa, son noktaya mevcut değer ekle
+  if (fundCurrentValues.length > 0 && result.length > 0) {
+    const lastPoint = result[result.length - 1];
+    const totalCurrentValue = calculateAllFundPerformance(investments, fundCurrentValues)
+      .reduce((sum, fp) => sum + fp.currentValue, 0);
+    
+    if (totalCurrentValue > 0) {
+      lastPoint.currentValue = totalCurrentValue;
+      lastPoint.profitLoss = totalCurrentValue - lastPoint.cumulativeInvested;
+    }
+  }
+  
+  return result;
+}
