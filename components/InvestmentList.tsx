@@ -6,6 +6,7 @@ import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarS
 import { useState, useMemo } from 'react';
 import InvestmentForm from './InvestmentForm';
 import { saveInvestmentsSync, saveInvestments } from '@/lib/storage';
+import LoadingSpinner from './LoadingSpinner';
 
 interface InvestmentListProps {
   investments: Investment[];
@@ -27,6 +28,8 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
   const [expandedFunds, setExpandedFunds] = useState<Set<string>>(new Set());
   const [editingCurrentValue, setEditingCurrentValue] = useState<{fundName: string; type: InvestmentType} | null>(null);
   const [currentValueInput, setCurrentValueInput] = useState<string>('');
+  const [isSavingCurrentValue, setIsSavingCurrentValue] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -34,11 +37,24 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
   const [filterCurrency, setFilterCurrency] = useState<string>('all');
   const [showFilters, setShowFilters] = useState<boolean>(false);
 
-  const handleDelete = (id: string) => {
-    const updated = investments.filter(inv => inv.id !== id);
-    saveInvestmentsSync(updated);
-    onUpdate();
-    setDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      const updated = investments.filter(inv => inv.id !== id);
+      saveInvestmentsSync(updated);
+      
+      // Firebase'e de kaydet
+      try {
+        await saveInvestments(updated);
+      } catch (error) {
+        console.warn('Firebase sync failed, data saved locally:', error);
+      }
+      
+      onUpdate();
+      setDeleteConfirm(null);
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   const handleSave = (investment: Investment) => {
@@ -74,37 +90,45 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
   const handleSaveCurrentValue = async () => {
     if (!editingCurrentValue) return;
     
-    const { fundName, type } = editingCurrentValue;
-    const fundInvestments = investments.filter(inv => 
-      inv.fundName === fundName && inv.type === type
-    );
-    const totalInvested = fundInvestments.reduce((sum, inv) => sum + inv.amount, 0);
-    const value = parseFloat(currentValueInput.replace(',', '.'));
-    
-    if (isNaN(value) || value < 0) return;
-    
-    const updated = investments.map(inv => {
-      if (inv.fundName === fundName && inv.type === type) {
-        const ratio = inv.amount / totalInvested;
-        return { ...inv, currentValue: value * ratio };
-      }
-      return inv;
-    });
-    
-    // Önce localStorage'a kaydet (hızlı erişim)
-    saveInvestmentsSync(updated);
-    
-    // Sonra Firebase'e de kaydet (senkronizasyon için)
+    setIsSavingCurrentValue(true);
     try {
-      await saveInvestments(updated);
-    } catch (error) {
-      // Firebase hatası olsa bile localStorage'da var, sessizce devam et
-      console.warn('Firebase sync failed, data saved locally:', error);
+      const { fundName, type } = editingCurrentValue;
+      const fundInvestments = investments.filter(inv => 
+        inv.fundName === fundName && inv.type === type
+      );
+      const totalInvested = fundInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      const value = parseFloat(currentValueInput.replace(',', '.'));
+      
+      if (isNaN(value) || value < 0) {
+        setIsSavingCurrentValue(false);
+        return;
+      }
+      
+      const updated = investments.map(inv => {
+        if (inv.fundName === fundName && inv.type === type) {
+          const ratio = inv.amount / totalInvested;
+          return { ...inv, currentValue: value * ratio };
+        }
+        return inv;
+      });
+      
+      // Önce localStorage'a kaydet (hızlı erişim)
+      saveInvestmentsSync(updated);
+      
+      // Sonra Firebase'e de kaydet (senkronizasyon için)
+      try {
+        await saveInvestments(updated);
+      } catch (error) {
+        // Firebase hatası olsa bile localStorage'da var, sessizce devam et
+        console.warn('Firebase sync failed, data saved locally:', error);
+      }
+      
+      onUpdate();
+      setEditingCurrentValue(null);
+      setCurrentValueInput('');
+    } finally {
+      setIsSavingCurrentValue(false);
     }
-    
-    onUpdate();
-    setEditingCurrentValue(null);
-    setCurrentValueInput('');
   };
 
   const handleCancelCurrentValue = () => {
@@ -321,10 +345,13 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
             <div className="flex gap-1" role="group" aria-label="Silme onayı">
               <button
                 onClick={() => handleDelete(investment.id)}
-                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                disabled={isDeleting === investment.id}
+                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                 aria-label="Silme işlemini onayla"
+                aria-busy={isDeleting === investment.id}
               >
-                Sil
+                {isDeleting === investment.id && <LoadingSpinner size="sm" aria-label="Siliniyor" />}
+                <span>{isDeleting === investment.id ? 'Siliniyor...' : 'Sil'}</span>
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
@@ -707,14 +734,18 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                   <div className="flex gap-3">
                                     <button
                                       onClick={handleSaveCurrentValue}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                      disabled={isSavingCurrentValue}
+                                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                       aria-label="Güncel değeri kaydet"
+                                      aria-busy={isSavingCurrentValue}
                                     >
-                                      Kaydet
+                                      {isSavingCurrentValue && <LoadingSpinner size="sm" aria-label="Kaydediliyor" />}
+                                      <span>{isSavingCurrentValue ? 'Kaydediliyor...' : 'Kaydet'}</span>
                                     </button>
                                     <button
                                       onClick={handleCancelCurrentValue}
-                                      className="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                                      disabled={isSavingCurrentValue}
+                                      className="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                       aria-label="Güncel değer girişini iptal et"
                                     >
                                       İptal

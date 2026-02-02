@@ -12,13 +12,16 @@ import InvestmentList from '@/components/InvestmentList';
 import InvestmentForm from '@/components/InvestmentForm';
 import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import SkeletonLoader from '@/components/SkeletonLoader';
 
 export default function Home() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
       try {
         const { getInvestments } = await import('@/lib/storage');
         const loaded = await getInvestments();
@@ -26,6 +29,8 @@ export default function Home() {
       } catch {
         const loaded = getInvestmentsSync();
         setInvestments(loaded);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();
@@ -67,13 +72,15 @@ export default function Home() {
       ? investments.map(inv => inv.id === investment.id ? investment : inv)
       : [...investments, investment];
     
+    setInvestments(updated);
+    setShowAddForm(false);
+    
+    // Async save (non-blocking)
     try {
       await saveInvestments(updated);
     } catch {
       saveInvestmentsSync(updated);
     }
-    setInvestments(updated);
-    setShowAddForm(false);
   };
 
   // Memoized calculations
@@ -213,27 +220,43 @@ export default function Home() {
           </div>
         )}
 
-        {/* Summary Cards */}
-        <section aria-label="Yatırım kategorileri özeti" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {summary.map((item) => (
-            <SummaryCard
-              key={item.type}
-              type={item.type}
-              totalAmount={item.totalAmount}
-              count={item.count}
-              percentage={
-                stats.totalInvested > 0
-                  ? (item.totalAmount / stats.totalInvested) * 100
-                  : 0
-              }
-            />
-          ))}
-        </section>
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <SkeletonLoader type="card" />
+              <SkeletonLoader type="card" />
+              <SkeletonLoader type="card" />
+              <SkeletonLoader type="card" />
+            </div>
+            <SkeletonLoader type="chart" />
+            <SkeletonLoader type="list" />
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <section aria-label="Yatırım kategorileri özeti" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {summary.map((item) => (
+                <SummaryCard
+                  key={item.type}
+                  type={item.type}
+                  totalAmount={item.totalAmount}
+                  count={item.count}
+                  percentage={
+                    stats.totalInvested > 0
+                      ? (item.totalAmount / stats.totalInvested) * 100
+                      : 0
+                  }
+                />
+              ))}
+            </section>
 
-        {/* Performance Chart */}
-        <div className="mb-8">
-          <PerformanceChart data={timeSeriesData} />
-        </div>
+            {/* Performance Chart */}
+            <div className="mb-8">
+              <PerformanceChart data={timeSeriesData} />
+            </div>
+          </>
+        )}
 
         {/* Charts and List */}
         <section aria-label="Grafikler ve dağılımlar" className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -346,7 +369,7 @@ export default function Home() {
         </section>
 
         {/* Investment List */}
-        <InvestmentList investments={investments} onUpdate={handleUpdate} />
+        {!isLoading && <InvestmentList investments={investments} onUpdate={handleUpdate} />}
       </main>
 
       <footer className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 mt-12">

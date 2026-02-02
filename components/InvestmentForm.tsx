@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { investmentSchema, InvestmentFormData } from '@/lib/validation';
 import toast from 'react-hot-toast';
+import LoadingSpinner from './LoadingSpinner';
 
 interface InvestmentFormProps {
   investment?: Investment;
@@ -271,10 +272,12 @@ export default function InvestmentForm({ investment, onSave, onCancel }: Investm
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           aria-label={investment ? 'Yatırımı güncelle' : 'Yeni yatırım ekle'}
+          aria-busy={isSubmitting}
         >
-          {isSubmitting ? 'Kaydediliyor...' : investment ? 'Güncelle' : 'Ekle'}
+          {isSubmitting && <LoadingSpinner size="sm" aria-label="Kaydediliyor" />}
+          <span>{isSubmitting ? 'Kaydediliyor...' : investment ? 'Güncelle' : 'Ekle'}</span>
         </button>
         {onCancel && (
           <button
