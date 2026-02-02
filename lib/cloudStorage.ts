@@ -121,16 +121,24 @@ export function subscribeToInvestments(
     .then((userId) => {
       if (!db) return;
       const docRef = doc(db, COLLECTION_NAME, userId);
-      unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          callback(docSnap.data().investments || []);
-        } else {
-          callback([]);
+      unsubscribe = onSnapshot(
+        docRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            callback(docSnap.data().investments || []);
+          } else {
+            callback([]);
+          }
+        },
+        (error) => {
+          // Permission denied veya diğer hatalar için sessizce devam et
+          // localStorage'dan veri okumaya devam edecek
+          console.warn('Firebase snapshot error (will use localStorage):', error.code, error.message);
         }
-      });
+      );
     })
-    .catch(() => {
-      // Silent fail
+    .catch((error) => {
+      console.warn('Failed to setup Firebase listener (will use localStorage):', error);
     });
 
   return unsubscribe;
