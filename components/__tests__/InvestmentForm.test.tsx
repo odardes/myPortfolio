@@ -56,7 +56,7 @@ describe('InvestmentForm', () => {
     expect(currentValueInput).toBeInTheDocument();
   });
 
-  it.skip('should call onSave with correct data on submit', async () => {
+  it('should call onSave with correct data on submit', async () => {
     const user = userEvent.setup();
     render(<InvestmentForm onSave={mockOnSave} />);
     
@@ -64,19 +64,38 @@ describe('InvestmentForm', () => {
     const amountInput = screen.getByLabelText(/Tutar \(TRY\)/i);
     
     // Fill form fields
-    await user.clear(fundNameInput);
     await user.type(fundNameInput, 'Altın Fon');
-    
-    // Clear and set amount (must be > 0.01 for validation)
-    await user.clear(amountInput);
     await user.type(amountInput, '1000');
+    
+    // Wait for inputs to be filled
+    await waitFor(() => {
+      expect((fundNameInput as HTMLInputElement).value).toBe('Altın Fon');
+      expect((amountInput as HTMLInputElement).value).toBe('1000');
+    });
+    
+    // Check for validation errors before submitting
+    await waitFor(() => {
+      const errors = screen.queryAllByRole('alert');
+      if (errors.length > 0) {
+        console.log('Validation errors before submit:', errors.map(e => e.textContent));
+      }
+    });
     
     const submitButton = screen.getByText('Ekle');
     await user.click(submitButton);
 
+    // Wait a bit for form processing
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Check for validation errors after clicking submit
+    const errorsAfterSubmit = screen.queryAllByRole('alert');
+    if (errorsAfterSubmit.length > 0) {
+      console.log('Validation errors after submit:', errorsAfterSubmit.map(e => e.textContent));
+    }
+
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalled();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
 
     const callArgs = mockOnSave.mock.calls[0][0];
     expect(callArgs.fundName).toBe('Altın Fon');
@@ -104,7 +123,7 @@ describe('InvestmentForm', () => {
     expect(screen.getByText('Güncelle')).toBeInTheDocument();
   });
 
-  it.skip('should handle form submission with all fields', async () => {
+  it('should handle form submission with all fields', async () => {
     const user = userEvent.setup();
     render(<InvestmentForm onSave={mockOnSave} />);
     
@@ -112,18 +131,20 @@ describe('InvestmentForm', () => {
     const amountInput = screen.getByLabelText(/Tutar \(TRY\)/i);
     
     // Fill required fields
-    await user.clear(fundNameInput);
     await user.type(fundNameInput, 'Altın Fon');
-    
-    await user.clear(amountInput);
     await user.type(amountInput, '1000');
+    
+    // Wait for inputs to be filled
+    await waitFor(() => {
+      expect((fundNameInput as HTMLInputElement).value).toBe('Altın Fon');
+    });
     
     const submitButton = screen.getByText('Ekle');
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalled();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
   });
 
   it('should handle currentValue input', async () => {

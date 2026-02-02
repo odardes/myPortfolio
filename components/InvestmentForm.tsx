@@ -18,12 +18,12 @@ export default function InvestmentForm({ investment, onSave, onCancel }: Investm
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<InvestmentFormData>({
-    resolver: zodResolver(investmentSchema),
+    resolver: zodResolver(investmentSchema) as any,
     defaultValues: {
       date: investment?.date || new Date().toISOString().split('T')[0],
       type: investment?.type || 'fon',
       fundName: investment?.fundName || '',
-      amount: investment?.amount || 0,
+      amount: investment?.amount,
       price: investment?.price,
       currency: (investment?.currency || 'TRY') as 'TRY' | 'USD' | 'EUR',
       notes: investment?.notes,
@@ -33,25 +33,20 @@ export default function InvestmentForm({ investment, onSave, onCancel }: Investm
   });
 
   const onSubmit = async (data: InvestmentFormData) => {
-    try {
-      const newInvestment: Investment = {
-        id: investment?.id || Date.now().toString(),
-        date: data.date,
-        type: data.type as InvestmentType,
-        fundName: data.fundName,
-        amount: data.amount,
-        price: data.price,
-        currency: data.currency,
-        notes: data.notes,
-        currentValue: data.currentValue,
-      };
-      
-      onSave(newInvestment);
-      toast.success(investment ? 'Yatırım güncellendi!' : 'Yatırım eklendi!');
-    } catch (error) {
-      toast.error('Bir hata oluştu. Lütfen tekrar deneyin.');
-      console.error('Form submission error:', error);
-    }
+    const newInvestment: Investment = {
+      id: investment?.id || Date.now().toString(),
+      date: data.date,
+      type: data.type as InvestmentType,
+      fundName: data.fundName,
+      amount: data.amount,
+      price: data.price,
+      currency: data.currency,
+      notes: data.notes,
+      currentValue: data.currentValue,
+    };
+    
+    onSave(newInvestment);
+    toast.success(investment ? 'Yatırım güncellendi!' : 'Yatırım eklendi!');
   };
 
   return (
@@ -140,7 +135,10 @@ export default function InvestmentForm({ investment, onSave, onCancel }: Investm
           <input
             id="investment-amount"
             type="number"
-            {...register('amount', { valueAsNumber: true })}
+            {...register('amount', { 
+              valueAsNumber: true,
+              required: 'Tutar gereklidir',
+            })}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 ${
               errors.amount 
                 ? 'border-red-500 focus:ring-red-500 dark:border-red-500' 

@@ -11,9 +11,7 @@ export const investmentSchema = z.object({
       return selectedDate <= today;
     }, 'Tarih bugünden ileri olamaz'),
   
-  type: z.enum(['fon', 'döviz', 'hisse', 'diğer'], {
-    required_error: 'Yatırım türü seçilmelidir',
-  }),
+  type: z.enum(['fon', 'döviz', 'hisse', 'diğer']),
   
   fundName: z.string()
     .min(1, 'Fon adı gereklidir')
@@ -21,23 +19,39 @@ export const investmentSchema = z.object({
     .max(100, 'Fon adı en fazla 100 karakter olabilir')
     .trim(),
   
-  amount: z.number()
+  amount: z.number({
+    message: 'Tutar bir sayı olmalıdır',
+  })
     .min(0.01, 'Tutar 0\'dan büyük olmalıdır')
     .max(999999999, 'Tutar çok büyük'),
   
-  price: z.number()
-    .min(0, 'Birim fiyat negatif olamaz')
-    .max(999999999, 'Birim fiyat çok büyük')
-    .optional()
-    .or(z.literal(undefined)),
+  price: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined || (typeof val === 'number' && isNaN(val))) {
+        return undefined;
+      }
+      return Number(val);
+    },
+    z.number()
+      .min(0, 'Birim fiyat negatif olamaz')
+      .max(999999999, 'Birim fiyat çok büyük')
+      .optional()
+  ),
   
   currency: z.enum(['TRY', 'USD', 'EUR']),
   
-  currentValue: z.number()
-    .min(0, 'Güncel değer negatif olamaz')
-    .max(999999999, 'Güncel değer çok büyük')
-    .optional()
-    .or(z.literal(undefined)),
+  currentValue: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined || (typeof val === 'number' && isNaN(val))) {
+        return undefined;
+      }
+      return Number(val);
+    },
+    z.number()
+      .min(0, 'Güncel değer negatif olamaz')
+      .max(999999999, 'Güncel değer çok büyük')
+      .optional()
+  ),
   
   notes: z.string()
     .max(500, 'Notlar en fazla 500 karakter olabilir')
@@ -45,4 +59,13 @@ export const investmentSchema = z.object({
     .or(z.literal(undefined)),
 });
 
-export type InvestmentFormData = z.infer<typeof investmentSchema>;
+export type InvestmentFormData = {
+  date: string;
+  type: 'fon' | 'döviz' | 'hisse' | 'diğer';
+  fundName: string;
+  amount: number;
+  price?: number | undefined;
+  currency: 'TRY' | 'USD' | 'EUR';
+  currentValue?: number | undefined;
+  notes?: string | undefined;
+};
