@@ -94,7 +94,13 @@ describe('ErrorBoundary', () => {
 
   it('should show error details in development mode', () => {
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    
+    // Use Object.defineProperty to override read-only property
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'development',
+      writable: true,
+      configurable: true,
+    });
 
     render(
       <ErrorBoundary>
@@ -104,12 +110,23 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText(/Hata Detayları/i)).toBeInTheDocument();
 
-    process.env.NODE_ENV = originalEnv;
+    // Restore original value
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: originalEnv,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('should not show error details in production mode', () => {
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
+    
+    // Use Object.defineProperty to override read-only property
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'production',
+      writable: true,
+      configurable: true,
+    });
 
     render(
       <ErrorBoundary>
@@ -119,7 +136,12 @@ describe('ErrorBoundary', () => {
 
     expect(screen.queryByText(/Hata Detayları/i)).not.toBeInTheDocument();
 
-    process.env.NODE_ENV = originalEnv;
+    // Restore original value
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: originalEnv,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('should have proper accessibility attributes', () => {

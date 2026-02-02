@@ -12,6 +12,7 @@ import SummaryCard from '@/components/SummaryCard';
 import InvestmentList from '@/components/InvestmentList';
 import ThemeToggle from '@/components/ThemeToggle';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import ExportImport from '@/components/ExportImport';
 
 // Lazy load heavy components
 const PortfolioChart = dynamic(() => import('@/components/PortfolioChart'), {
@@ -87,12 +88,36 @@ export default function Home() {
     setInvestments(updated);
     
     // Add minimum delay to ensure spinner is visible BEFORE closing form (500ms)
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, DELAYS.SAVE_OPERATION));
     
     // Close form after delay so spinner is visible
     setShowAddForm(false);
     
     // Then save async (non-blocking)
+    try {
+      await saveInvestments(updated);
+    } catch {
+      saveInvestmentsSync(updated);
+    }
+  }, [investments]);
+
+  const handleImportInvestments = useCallback(async (importedInvestments: Investment[]) => {
+    // Merge imported investments with existing ones
+    // If ID matches, update; otherwise add as new
+    const updated = importedInvestments.reduce((acc, inv) => {
+      const existingIndex = acc.findIndex(i => i.id === inv.id);
+      if (existingIndex >= 0) {
+        acc[existingIndex] = inv;
+      } else {
+        acc.push(inv);
+      }
+      return acc;
+    }, [...investments]);
+    
+    // Update state
+    setInvestments(updated);
+    
+    // Save async (non-blocking)
     try {
       await saveInvestments(updated);
     } catch {
@@ -139,6 +164,7 @@ export default function Home() {
               <p className="text-gray-600 dark:text-gray-400 mt-1">Yatırımlarınızı takip edin ve analiz edin</p>
             </div>
             <nav className="flex items-center gap-3" aria-label="Ana navigasyon">
+              <ExportImport investments={investments} onImport={handleImportInvestments} />
               <ThemeToggle />
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
