@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TimeSeriesDataPoint } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
@@ -8,7 +9,7 @@ interface PerformanceChartProps {
   data: TimeSeriesDataPoint[];
 }
 
-export default function PerformanceChart({ data }: PerformanceChartProps) {
+function PerformanceChart({ data }: PerformanceChartProps) {
   if (data.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -134,3 +135,5 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
     </div>
   );
 }
+
+export default memo(PerformanceChart);

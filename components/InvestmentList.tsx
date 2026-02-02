@@ -1,12 +1,19 @@
 'use client';
 
+import { useState, useMemo, useCallback, memo } from 'react';
+import dynamic from 'next/dynamic';
+import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, Search, Filter, X } from 'lucide-react';
 import { Investment, InvestmentType } from '@/types/investment';
 import { formatCurrency, formatDate, getTypeColor, getTypeLabel, calculateProfitLoss, formatPercentage } from '@/lib/utils';
-import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, Search, Filter, X } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import InvestmentForm from './InvestmentForm';
+import { DELAYS } from '@/lib/constants';
 import { saveInvestmentsSync, saveInvestments } from '@/lib/storage';
+import { useDebounce } from '@/hooks/useDebounce';
 import LoadingSpinner from './LoadingSpinner';
+
+// Lazy load InvestmentForm
+const InvestmentForm = dynamic(() => import('./InvestmentForm'), {
+  loading: () => <div className="p-4 border-2 border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/20 animate-pulse">Form yükleniyor...</div>,
+});
 
 interface InvestmentListProps {
   investments: Investment[];
@@ -19,7 +26,7 @@ interface GroupedInvestments {
   };
 }
 
-export default function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
+function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<InvestmentType>>(
@@ -36,18 +43,23 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
   const [filterType, setFilterType] = useState<InvestmentType | 'all'>('all');
   const [filterCurrency, setFilterCurrency] = useState<string>('all');
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  const debouncedSearchQuery = useDebounce(searchQuery, DELAYS.DEBOUNCE_SEARCH);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     setIsDeleting(id);
     try {
       const updated = investments.filter(inv => inv.id !== id);
+      
+      // Add minimum delay to ensure spinner is visible (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       saveInvestmentsSync(updated);
       
       // Firebase'e de kaydet
       try {
         await saveInvestments(updated);
       } catch (error) {
-        console.warn('Firebase sync failed, data saved locally:', error);
       }
       
       onUpdate();
@@ -55,16 +67,16 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     } finally {
       setIsDeleting(null);
     }
-  };
+  }, [investments, onUpdate]);
 
-  const handleSave = (investment: Investment) => {
+  const handleSave = useCallback((investment: Investment) => {
     const updated = investments.map(inv => 
       inv.id === investment.id ? investment : inv
     );
     saveInvestmentsSync(updated);
     onUpdate();
     setEditingId(null);
-  };
+  }, [investments, onUpdate]);
 
   const handleQuickEditCurrentValue = (investment: Investment, e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -87,7 +99,7 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     setCurrentValueInput(totalCurrentValue > 0 ? totalCurrentValue.toFixed(2).replace('.', ',') : '');
   };
 
-  const handleSaveCurrentValue = async () => {
+  const handleSaveCurrentValue = useCallback(async () => {
     if (!editingCurrentValue) return;
     
     setIsSavingCurrentValue(true);
@@ -112,6 +124,9 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
         return inv;
       });
       
+      // Add minimum delay to ensure spinner is visible (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Önce localStorage'a kaydet (hızlı erişim)
       saveInvestmentsSync(updated);
       
@@ -120,7 +135,6 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
         await saveInvestments(updated);
       } catch (error) {
         // Firebase hatası olsa bile localStorage'da var, sessizce devam et
-        console.warn('Firebase sync failed, data saved locally:', error);
       }
       
       onUpdate();
@@ -129,7 +143,7 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     } finally {
       setIsSavingCurrentValue(false);
     }
-  };
+  }, [editingCurrentValue, investments, currentValueInput, onUpdate]);
 
   const handleCancelCurrentValue = () => {
     setEditingCurrentValue(null);
@@ -160,12 +174,12 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     });
   };
 
-  // Filter investments based on search and filters
+  // Filter investments based on search and filters (using debounced search)
   const filteredInvestments = useMemo(() => {
     return investments.filter((investment) => {
-      // Search filter (fundName)
-      if (searchQuery.trim() !== '') {
-        const query = searchQuery.toLowerCase();
+      // Search filter (fundName) - using debounced query
+      if (debouncedSearchQuery.trim() !== '') {
+        const query = debouncedSearchQuery.toLowerCase();
         if (!investment.fundName.toLowerCase().includes(query) &&
             !investment.notes?.toLowerCase().includes(query)) {
           return false;
@@ -184,7 +198,7 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
       
       return true;
     });
-  }, [investments, searchQuery, filterType, filterCurrency]);
+  }, [investments, debouncedSearchQuery, filterType, filterCurrency]);
 
   const groupedInvestments = useMemo(() => {
     const grouped: GroupedInvestments = {};
@@ -778,3 +792,5 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     </section>
   );
 }
+
+export default memo(InvestmentList);

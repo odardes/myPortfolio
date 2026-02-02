@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { InvestmentType } from '@/types/investment';
 import { getTypeColor, getTypeLabel } from '@/lib/utils';
@@ -11,7 +12,7 @@ interface SummaryCardProps {
   percentage: number;
 }
 
-export default function SummaryCard({ type, totalAmount, count, percentage }: SummaryCardProps) {
+function SummaryCard({ type, totalAmount, count, percentage }: SummaryCardProps) {
   const typeLabel = getTypeLabel(type);
   
   return (
@@ -49,3 +50,5 @@ export default function SummaryCard({ type, totalAmount, count, percentage }: Su
     </article>
   );
 }
+
+export default memo(SummaryCard);

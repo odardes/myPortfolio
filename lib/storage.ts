@@ -1,8 +1,6 @@
 import { Investment, FundCurrentValue } from '@/types/investment';
+import { STORAGE_KEYS } from './constants';
 import { getInvestmentsFromCloud, saveInvestmentsToCloud } from './cloudStorage';
-
-const STORAGE_KEY = 'portfolio-investments';
-const FUND_VALUES_KEY = 'portfolio-fund-current-values';
 
 // Firebase kullanılabilir mi?
 function isCloudAvailable(): boolean {
@@ -19,12 +17,12 @@ export async function getInvestments(): Promise<Investment[]> {
       const cloudData = await getInvestmentsFromCloud();
       if (cloudData && cloudData.length > 0) {
         // Cloud'dan veri geldi, localStorage'a da kaydet (yedek)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+        localStorage.setItem(STORAGE_KEYS.INVESTMENTS, JSON.stringify(cloudData));
         return migrateInvestments(cloudData);
       } else {
         // Cloud'da veri yok, localStorage'dan al ve cloud'a yükle
         try {
-          const stored = localStorage.getItem(STORAGE_KEY);
+          const stored = localStorage.getItem(STORAGE_KEYS.INVESTMENTS);
           if (stored) {
             const localInvestments = JSON.parse(stored);
             const migrated = migrateInvestments(localInvestments);
@@ -47,9 +45,8 @@ export async function getInvestments(): Promise<Investment[]> {
     }
   }
   
-  // Cloud yoksa veya hata varsa localStorage'dan oku
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.INVESTMENTS);
     if (!stored) return getInitialData();
     const investments = JSON.parse(stored);
     return migrateInvestments(investments);
@@ -63,11 +60,10 @@ export function getInvestmentsSync(): Investment[] {
   if (typeof window === 'undefined') return [];
   
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.INVESTMENTS);
     if (!stored) {
-      // İlk yüklemede initial data'yı localStorage'a kaydet
       const initialData = getInitialData();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
+      localStorage.setItem(STORAGE_KEYS.INVESTMENTS, JSON.stringify(initialData));
       return initialData;
     }
     const investments = JSON.parse(stored);
@@ -76,7 +72,7 @@ export function getInvestmentsSync(): Investment[] {
     // Hata durumunda initial data'yı döndür ve kaydet
     const initialData = getInitialData();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
+      localStorage.setItem(STORAGE_KEYS.INVESTMENTS, JSON.stringify(initialData));
     } catch (e) {
       // Silent fail
     }
@@ -87,20 +83,17 @@ export function getInvestmentsSync(): Investment[] {
 export async function saveInvestments(investments: Investment[]): Promise<void> {
   if (typeof window === 'undefined') return;
   
-  // Önce localStorage'a kaydet (hızlı erişim için)
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(investments));
+    localStorage.setItem(STORAGE_KEYS.INVESTMENTS, JSON.stringify(investments));
   } catch (error) {
-    console.warn('Failed to save to localStorage:', error);
+    // Silent fail - localStorage may be full or unavailable
   }
   
-  // Sonra cloud'a kaydet (senkronizasyon için)
   if (isCloudAvailable()) {
     try {
       await saveInvestmentsToCloud(investments);
     } catch (error) {
-      console.warn('Failed to save to Firebase:', error);
-      // localStorage'da var, devam et
+      // Silent fail - data is saved locally
     }
   }
 }
@@ -110,15 +103,14 @@ export function saveInvestmentsSync(investments: Investment[]): void {
   if (typeof window === 'undefined') return;
   
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(investments));
-    // Arka planda cloud'a da kaydet (async)
+    localStorage.setItem(STORAGE_KEYS.INVESTMENTS, JSON.stringify(investments));
     if (isCloudAvailable()) {
-      saveInvestmentsToCloud(investments).catch((error) => {
-        console.warn('Failed to save to Firebase (async):', error);
+      saveInvestmentsToCloud(investments).catch(() => {
+        // Silent fail - data is saved locally
       });
     }
   } catch (error) {
-    console.warn('Failed to save to localStorage:', error);
+    // Silent fail - localStorage may be full or unavailable
   }
 }
 
@@ -127,7 +119,7 @@ export function getFundCurrentValues(): FundCurrentValue[] {
   if (typeof window === 'undefined') return [];
   
   try {
-    const stored = localStorage.getItem(FUND_VALUES_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.FUND_VALUES);
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (error) {
@@ -139,7 +131,7 @@ export function saveFundCurrentValues(values: FundCurrentValue[]): void {
   if (typeof window === 'undefined') return;
   
   try {
-    localStorage.setItem(FUND_VALUES_KEY, JSON.stringify(values));
+    localStorage.setItem(STORAGE_KEYS.FUND_VALUES, JSON.stringify(values));
   } catch (error) {
     // Silent fail
   }

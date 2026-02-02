@@ -1,5 +1,6 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
+import React from 'react'
 
 // Mock ResizeObserver for Recharts
 global.ResizeObserver = class ResizeObserver {
@@ -81,3 +82,30 @@ jest.mock('@/lib/cloudStorage', () => ({
   saveInvestmentsToCloud: jest.fn(() => Promise.resolve()),
   isFirebaseAvailable: jest.fn(() => false),
 }));
+
+// Mock next/dynamic for testing - return component directly
+jest.mock('next/dynamic', () => {
+  return jest.fn((componentImport) => {
+    // In test environment, return the component synchronously
+    // This is a simplified mock - actual dynamic import happens at build time
+    if (typeof componentImport === 'function') {
+      // Return a function that will resolve the component
+      return function DynamicComponent(props) {
+        const [Component, setComponent] = React.useState(null);
+        React.useEffect(() => {
+          const loadComponent = async () => {
+            try {
+              const module = await componentImport();
+              setComponent(() => module.default || module);
+            } catch (e) {
+              // Component failed to load in test environment
+            }
+          };
+          loadComponent();
+        }, []);
+        return Component ? React.createElement(Component, props) : null;
+      };
+    }
+    return componentImport;
+  });
+});

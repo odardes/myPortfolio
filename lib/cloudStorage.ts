@@ -133,12 +133,10 @@ export function subscribeToInvestments(
         (error) => {
           // Permission denied veya diğer hatalar için sessizce devam et
           // localStorage'dan veri okumaya devam edecek
-          console.warn('Firebase snapshot error (will use localStorage):', error.code, error.message);
         }
       );
     })
     .catch((error) => {
-      console.warn('Failed to setup Firebase listener (will use localStorage):', error);
     });
 
   return unsubscribe;

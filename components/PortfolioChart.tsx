@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { InvestmentSummary } from '@/types/investment';
 import { getTypeColor, getTypeLabel } from '@/lib/utils';
@@ -10,12 +11,14 @@ interface PortfolioChartProps {
 
 const COLORS = ['#10B981', '#3B82F6', '#F97316', '#A855F7', '#6B7280'];
 
-export default function PortfolioChart({ data }: PortfolioChartProps) {
-  const chartData = data.map((item, index) => ({
-    name: getTypeLabel(item.type),
-    value: item.totalAmount,
-    color: COLORS[index % COLORS.length],
-  }));
+function PortfolioChart({ data }: PortfolioChartProps) {
+  const chartData = useMemo(() => 
+    data.map((item, index) => ({
+      name: getTypeLabel(item.type),
+      value: item.totalAmount,
+      color: COLORS[index % COLORS.length],
+    })), [data]
+  );
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -51,3 +54,5 @@ export default function PortfolioChart({ data }: PortfolioChartProps) {
     </div>
   );
 }
+
+export default memo(PortfolioChart);

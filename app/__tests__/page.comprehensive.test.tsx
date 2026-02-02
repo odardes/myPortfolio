@@ -90,9 +90,10 @@ describe('Home Page Comprehensive', () => {
     const submitButton = screen.getByText('Ekle');
     fireEvent.click(submitButton);
     
+    // Wait longer due to delay in handleSaveInvestment (500ms + processing time)
     await waitFor(() => {
       expect(mockSaveInvestmentsSync).toHaveBeenCalled();
-    });
+    }, { timeout: 2000 });
   });
 
   it('should handle updating existing investment', async () => {

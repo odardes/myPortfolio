@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { InvestmentType } from '@/types/investment';
+import { VALIDATION_LIMITS } from './constants';
 
 export const investmentSchema = z.object({
   date: z.string()
@@ -34,7 +35,7 @@ export const investmentSchema = z.object({
     },
     z.number()
       .min(0, 'Birim fiyat negatif olamaz')
-      .max(999999999, 'Birim fiyat çok büyük')
+      .max(VALIDATION_LIMITS.PRICE_MAX, 'Birim fiyat çok büyük')
       .optional()
   ),
   
@@ -49,12 +50,12 @@ export const investmentSchema = z.object({
     },
     z.number()
       .min(0, 'Güncel değer negatif olamaz')
-      .max(999999999, 'Güncel değer çok büyük')
+      .max(VALIDATION_LIMITS.CURRENT_VALUE_MAX, 'Güncel değer çok büyük')
       .optional()
   ),
   
   notes: z.string()
-    .max(500, 'Notlar en fazla 500 karakter olabilir')
+    .max(VALIDATION_LIMITS.NOTES_MAX, `Notlar en fazla ${VALIDATION_LIMITS.NOTES_MAX} karakter olabilir`)
     .optional()
     .or(z.literal(undefined)),
 });

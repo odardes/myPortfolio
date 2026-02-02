@@ -1,18 +1,30 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import { Investment } from '@/types/investment';
+import { DELAYS, STORAGE_KEYS } from '@/lib/constants';
 import { getInvestmentsSync, saveInvestmentsSync, getInvestments, saveInvestments } from '@/lib/storage';
 import { subscribeToInvestments } from '@/lib/cloudStorage';
 import { calculateSummary, calculatePortfolioStats, formatCurrency, formatPercentage, calculateTimeSeriesData } from '@/lib/utils';
 import SummaryCard from '@/components/SummaryCard';
-import PortfolioChart from '@/components/PortfolioChart';
-import PerformanceChart from '@/components/PerformanceChart';
 import InvestmentList from '@/components/InvestmentList';
-import InvestmentForm from '@/components/InvestmentForm';
-import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SkeletonLoader from '@/components/SkeletonLoader';
+
+// Lazy load heavy components
+const PortfolioChart = dynamic(() => import('@/components/PortfolioChart'), {
+  loading: () => <SkeletonLoader type="chart" />,
+});
+
+const PerformanceChart = dynamic(() => import('@/components/PerformanceChart'), {
+  loading: () => <SkeletonLoader type="chart" />,
+});
+
+const InvestmentForm = dynamic(() => import('@/components/InvestmentForm'), {
+  loading: () => <SkeletonLoader type="form" />,
+});
 
 export default function Home() {
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -41,9 +53,8 @@ export default function Home() {
         // Firebase'den gelen veriyi kullan ve localStorage'a kaydet
         setInvestments(cloudInvestments);
         try {
-          localStorage.setItem('portfolio-investments', JSON.stringify(cloudInvestments));
+          localStorage.setItem(STORAGE_KEYS.INVESTMENTS, JSON.stringify(cloudInvestments));
         } catch (error) {
-          console.warn('Failed to save to localStorage:', error);
         }
       }
     });
@@ -56,7 +67,7 @@ export default function Home() {
     };
   }, []);
 
-  const handleUpdate = async () => {
+  const handleUpdate = useCallback(async () => {
     try {
       const updated = await getInvestments();
       setInvestments(updated);
@@ -64,24 +75,30 @@ export default function Home() {
       const updated = getInvestmentsSync();
       setInvestments(updated);
     }
-  };
+  }, []);
 
-  const handleSaveInvestment = async (investment: Investment) => {
-    const isExisting = investments.some(inv => inv.id === investment.id);
-    const updated = isExisting
+  const handleSaveInvestment = useCallback(async (investment: Investment) => {
+    // Calculate updated investments array
+    const updated = investments.some(inv => inv.id === investment.id)
       ? investments.map(inv => inv.id === investment.id ? investment : inv)
       : [...investments, investment];
     
+    // Update state first for immediate UI feedback
     setInvestments(updated);
+    
+    // Add minimum delay to ensure spinner is visible BEFORE closing form (500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Close form after delay so spinner is visible
     setShowAddForm(false);
     
-    // Async save (non-blocking)
+    // Then save async (non-blocking)
     try {
       await saveInvestments(updated);
     } catch {
       saveInvestmentsSync(updated);
     }
-  };
+  }, [investments]);
 
   // Memoized calculations
   const summary = useMemo(() => calculateSummary(investments), [investments]);

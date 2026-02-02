@@ -73,25 +73,8 @@ describe('InvestmentForm', () => {
       expect((amountInput as HTMLInputElement).value).toBe('1000');
     });
     
-    // Check for validation errors before submitting
-    await waitFor(() => {
-      const errors = screen.queryAllByRole('alert');
-      if (errors.length > 0) {
-        console.log('Validation errors before submit:', errors.map(e => e.textContent));
-      }
-    });
-    
     const submitButton = screen.getByText('Ekle');
     await user.click(submitButton);
-
-    // Wait a bit for form processing
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Check for validation errors after clicking submit
-    const errorsAfterSubmit = screen.queryAllByRole('alert');
-    if (errorsAfterSubmit.length > 0) {
-      console.log('Validation errors after submit:', errorsAfterSubmit.map(e => e.textContent));
-    }
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalled();

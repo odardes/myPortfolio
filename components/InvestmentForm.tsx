@@ -1,19 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { Investment, InvestmentType } from '@/types/investment';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { investmentSchema, InvestmentFormData } from '@/lib/validation';
+import { DELAYS } from '@/lib/constants';
 import toast from 'react-hot-toast';
 import LoadingSpinner from './LoadingSpinner';
 
 interface InvestmentFormProps {
   investment?: Investment;
-  onSave: (investment: Investment) => void;
+  onSave: (investment: Investment) => void | Promise<void>;
   onCancel?: () => void;
 }
 
 export default function InvestmentForm({ investment, onSave, onCancel }: InvestmentFormProps) {
+  const [isSaving, setIsSaving] = useState(false);
   const {
     register,
     handleSubmit,
@@ -46,8 +49,20 @@ export default function InvestmentForm({ investment, onSave, onCancel }: Investm
       currentValue: data.currentValue,
     };
     
-    onSave(newInvestment);
-    toast.success(investment ? 'Yatırım güncellendi!' : 'Yatırım eklendi!');
+    setIsSaving(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, DELAYS.SPINNER_MINIMUM));
+      
+      const result = onSave(newInvestment);
+      if (result instanceof Promise) {
+        await result;
+      }
+      toast.success(investment ? 'Yatırım güncellendi!' : 'Yatırım eklendi!');
+    } catch (error) {
+      toast.error('Kaydetme sırasında bir hata oluştu');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -271,19 +286,19 @@ export default function InvestmentForm({ investment, onSave, onCancel }: Investm
       <div className="flex gap-2 mt-4">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isSaving}
           className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           aria-label={investment ? 'Yatırımı güncelle' : 'Yeni yatırım ekle'}
-          aria-busy={isSubmitting}
+          aria-busy={isSubmitting || isSaving}
         >
-          {isSubmitting && <LoadingSpinner size="sm" aria-label="Kaydediliyor" />}
-          <span>{isSubmitting ? 'Kaydediliyor...' : investment ? 'Güncelle' : 'Ekle'}</span>
+          {(isSubmitting || isSaving) && <LoadingSpinner size="sm" aria-label="Kaydediliyor" />}
+          <span>{(isSubmitting || isSaving) ? 'Kaydediliyor...' : investment ? 'Güncelle' : 'Ekle'}</span>
         </button>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isSaving}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Formu iptal et"
           >
