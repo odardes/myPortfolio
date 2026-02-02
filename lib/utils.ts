@@ -214,3 +214,104 @@ export function calculateTimeSeriesData(
   
   return result;
 }
+
+/**
+ * Format investment amount based on type
+ * For altın (gold): shows grams if price exists
+ * For döviz (currency): shows currency amount if price exists
+ * For others: shows TRY amount
+ */
+export function formatInvestmentAmount(investment: Investment): {
+  primary: string; // Main display (gram/USD)
+  secondary?: string; // Secondary display (TL value)
+} {
+  // For döviz with price: show currency amount + TL value
+  if (investment.type === 'döviz' && investment.price && investment.price > 0) {
+    const currencyCode = investment.currency || 'TRY';
+    const amountInCurrency = investment.amount / investment.price;
+    
+    // Check if it's gold (altın)
+    const isGold = investment.fundName.toLowerCase().includes('altın') || 
+                   investment.fundName.toLowerCase().includes('gold');
+    
+    if (isGold) {
+      return {
+        primary: `${formatNumber(amountInCurrency)} gram`,
+        secondary: formatCurrency(investment.amount),
+      };
+    }
+    
+    // Regular currency
+    return {
+      primary: `${formatNumber(amountInCurrency)} ${currencyCode}`,
+      secondary: formatCurrency(investment.amount),
+    };
+  }
+  
+  // Default: show TRY amount
+  return {
+    primary: formatCurrency(investment.amount),
+  };
+}
+
+/**
+ * Format fund total amount (for fund headers)
+ * Calculates total quantity in currency/gram units and shows both quantity and TRY value
+ */
+export function formatFundTotal(
+  investments: Investment[],
+  fundName: string,
+  type: InvestmentType
+): {
+  primary: string; // Main display (gram/USD + TRY)
+  secondary?: string; // Secondary display (profit/loss)
+} {
+  if (type === 'döviz') {
+    // Check if it's gold
+    const isGold = fundName.toLowerCase().includes('altın') || 
+                   fundName.toLowerCase().includes('gold');
+    
+    // Calculate total quantity and total TRY value
+    let totalQuantity = 0;
+    let totalTRY = 0;
+    let hasValidPrice = false;
+    
+    investments.forEach(inv => {
+      if (inv.price && inv.price > 0) {
+        totalQuantity += inv.amount / inv.price;
+        hasValidPrice = true;
+      }
+      totalTRY += inv.amount;
+    });
+    
+    if (hasValidPrice && totalQuantity > 0) {
+      if (isGold) {
+        return {
+          primary: `${formatNumber(totalQuantity)} gram • ${formatCurrency(totalTRY)}`,
+        };
+      } else {
+        // Get currency code from first investment
+        const currencyCode = investments[0]?.currency || 'USD';
+        return {
+          primary: `${formatNumber(totalQuantity)} ${currencyCode} • ${formatCurrency(totalTRY)}`,
+        };
+      }
+    }
+  }
+  
+  // Default: show only TRY
+  const totalTRY = investments.reduce((sum, inv) => sum + inv.amount, 0);
+  return {
+    primary: formatCurrency(totalTRY),
+  };
+}
+
+/**
+ * Format number with proper decimal places
+ */
+function formatNumber(value: number): string {
+  if (value >= 1000) {
+    return value.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+  }
+  return value.toLocaleString('tr-TR', { maximumFractionDigits: 4 });
+}
