@@ -2,13 +2,15 @@
 
 import { useState, useMemo, useCallback, memo } from 'react';
 import dynamic from 'next/dynamic';
-import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, Search, Filter, X } from 'lucide-react';
+import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, Search, Filter, X, RefreshCw } from 'lucide-react';
 import { Investment, InvestmentType } from '@/types/investment';
-import { formatCurrency, formatDate, getTypeColor, getTypeLabel, calculateProfitLoss, formatPercentage } from '@/lib/utils';
+import { formatCurrency, formatDate, getTypeColor, getTypeLabel, calculateProfitLoss, formatPercentage, formatInvestmentAmount, formatFundTotal } from '@/lib/utils';
 import { DELAYS } from '@/lib/constants';
 import { saveInvestmentsSync, saveInvestments } from '@/lib/storage';
 import { useDebounce } from '@/hooks/useDebounce';
+import { fetchCurrentPrice, calculateCurrentValueFromPrice } from '@/lib/priceApi';
 import LoadingSpinner from './LoadingSpinner';
+import toast from 'react-hot-toast';
 
 // Lazy load InvestmentForm
 const InvestmentForm = dynamic(() => import('./InvestmentForm'), {
@@ -37,6 +39,8 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
   const [currentValueInput, setCurrentValueInput] = useState<string>('');
   const [isSavingCurrentValue, setIsSavingCurrentValue] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isFetchingPrice, setIsFetchingPrice] = useState<string | null>(null); // fundKey format: "type-fundName"
+  const [isBulkUpdating, setIsBulkUpdating] = useState<InvestmentType | null>(null); // Category type being bulk updated
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -149,6 +153,183 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
     setEditingCurrentValue(null);
     setCurrentValueInput('');
   };
+
+  const handleBulkUpdatePrices = useCallback(async (type: InvestmentType) => {
+    if (type !== 'döviz' && type !== 'hisse') {
+      toast.error('Sadece döviz ve hisse senetleri için toplu güncelleme yapılabilir');
+      return;
+    }
+
+    setIsBulkUpdating(type);
+    
+    try {
+      // Get all unique funds for this category
+      const categoryFunds = new Map<string, { fundName: string; currency?: string }>();
+      
+      investments.forEach(inv => {
+        if (inv.type === type) {
+          const key = `${inv.fundName}-${inv.currency || ''}`;
+          if (!categoryFunds.has(key)) {
+            categoryFunds.set(key, {
+              fundName: inv.fundName,
+              currency: inv.currency,
+            });
+          }
+        }
+      });
+
+      if (categoryFunds.size === 0) {
+        toast.error('Güncellenecek yatırım bulunamadı');
+        setIsBulkUpdating(null);
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      let currentInvestments = [...investments]; // Local copy to accumulate updates
+
+      // Update each fund sequentially
+      const fundsArray = Array.from(categoryFunds.values());
+      for (const { fundName, currency } of fundsArray) {
+        try {
+          const response = await fetchCurrentPrice(type, fundName, currency);
+          
+          if (response.success && response.data) {
+            const { price } = response.data;
+            const fundInvestments = currentInvestments.filter(inv => 
+              inv.fundName === fundName && inv.type === type && inv.currency === currency
+            );
+            
+            if (fundInvestments.length > 0) {
+              const totalInvested = fundInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+              
+              // Update local copy
+              currentInvestments = currentInvestments.map(inv => {
+                if (inv.fundName === fundName && inv.type === type && inv.currency === currency) {
+                  if (inv.price && inv.price > 0) {
+                    const units = inv.amount / inv.price;
+                    return { ...inv, currentValue: units * price };
+                  }
+                  const ratio = inv.amount / totalInvested;
+                  const totalCurrentValue = totalInvested * price;
+                  return { ...inv, currentValue: totalCurrentValue * ratio };
+                }
+                return inv;
+              });
+
+              // Save after each update
+              saveInvestmentsSync(currentInvestments);
+              try {
+                await saveInvestments(currentInvestments);
+              } catch (error) {
+                // Firebase error is non-critical
+              }
+              
+              successCount++;
+            }
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+        
+        // Small delay between updates to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} fon güncellendi${failCount > 0 ? `, ${failCount} başarısız` : ''}`);
+        onUpdate();
+      } else {
+        toast.error('Hiçbir fon güncellenemedi');
+      }
+    } catch (error) {
+      toast.error('Toplu güncelleme sırasında hata oluştu');
+    } finally {
+      setIsBulkUpdating(null);
+    }
+  }, [investments, onUpdate]);
+
+  const handleFetchPrice = useCallback(async (fundName: string, type: InvestmentType, currency?: string) => {
+    const fundKey = `${type}-${fundName}`;
+    setIsFetchingPrice(fundKey);
+    
+    try {
+      // Check if it's gold (altın) - skip TRY check for gold
+      const isGold = fundName.toLowerCase().includes('altın') || 
+                     fundName.toLowerCase().includes('gold');
+      
+      // Check if currency is TRY (base currency, no exchange rate needed)
+      // But skip this check for gold
+      if (!isGold) {
+        const currencyCode = currency || fundName.toUpperCase();
+        if (type === 'döviz' && (currencyCode === 'TRY' || currencyCode === 'TL')) {
+          toast.error('TRY (Türk Lirası) ana para birimidir ve döviz kuru çekilemez. Zaten TRY cinsinden değer giriyorsunuz.');
+          setIsFetchingPrice(null);
+          return;
+        }
+      }
+      
+      const response = await fetchCurrentPrice(type, fundName, currency);
+      
+      if (!response.success || !response.data) {
+        toast.error(response.error || 'Fiyat çekilemedi');
+        setIsFetchingPrice(null);
+        return;
+      }
+
+      const { price } = response.data;
+      const fundInvestments = investments.filter(inv => 
+        inv.fundName === fundName && inv.type === type
+      );
+      
+      if (fundInvestments.length === 0) {
+        toast.error('Yatırım bulunamadı');
+        setIsFetchingPrice(null);
+        return;
+      }
+
+      const totalInvested = fundInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      
+      // Calculate current value for each investment
+      const updated = investments.map(inv => {
+        if (inv.fundName === fundName && inv.type === type) {
+          // If original price exists, use it for ratio calculation
+          if (inv.price && inv.price > 0) {
+            const units = inv.amount / inv.price;
+            return { ...inv, currentValue: units * price };
+          }
+          
+          // Otherwise, distribute based on investment amount ratio
+          const ratio = inv.amount / totalInvested;
+          const totalCurrentValue = totalInvested * price; // For currency exchanges
+          return { ...inv, currentValue: totalCurrentValue * ratio };
+        }
+        return inv;
+      });
+
+      // Add minimum delay to ensure spinner is visible
+      await new Promise(resolve => setTimeout(resolve, DELAYS.SAVE_OPERATION));
+
+      // Save to localStorage first
+      saveInvestmentsSync(updated);
+      
+      // Then save to Firebase
+      try {
+        await saveInvestments(updated);
+      } catch (error) {
+        // Firebase error is non-critical
+      }
+
+      toast.success(`${fundName} fiyatı güncellendi: ${formatCurrency(price)}`);
+      onUpdate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Fiyat çekilirken hata oluştu');
+    } finally {
+      setIsFetchingPrice(null);
+    }
+  }, [investments, onUpdate]);
 
   const toggleCategory = (type: InvestmentType) => {
     setExpandedCategories(prev => {
@@ -314,12 +495,24 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
             )}
           </div>
           <div className="text-right">
-            <p className="text-base font-semibold text-gray-900 dark:text-white" aria-label={`Yatırım tutarı: ${formatCurrency(investment.amount)}`}>
-              {formatCurrency(investment.amount)}
-            </p>
+            {(() => {
+              const amountDisplay = formatInvestmentAmount(investment);
+              return (
+                <>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white" aria-label={`Yatırım tutarı: ${amountDisplay.primary}`}>
+                    {amountDisplay.primary}
+                  </p>
+                  {amountDisplay.secondary && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5" aria-label={`TL değeri: ${amountDisplay.secondary}`}>
+                      {amountDisplay.secondary}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
             {hasProfitLoss && (
               <p 
-                className={`text-sm font-medium ${
+                className={`text-sm font-medium mt-1 ${
                   profitLoss >= 0 
                     ? 'text-green-600 dark:text-green-400' 
                     : 'text-red-600 dark:text-red-400'
@@ -332,6 +525,29 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 ml-4" role="group" aria-label="Yatırım işlemleri">
+          {/* Auto-fetch price button (only for döviz and hisse) */}
+          {(investment.type === 'döviz' || investment.type === 'hisse') && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleFetchPrice(investment.fundName, investment.type, investment.currency);
+              }}
+              disabled={isFetchingPrice === `${investment.type}-${investment.fundName}`}
+              className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors cursor-pointer z-10 relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={`${investment.fundName} için fiyatı otomatik güncelle`}
+              style={{ pointerEvents: 'auto' }}
+              title="Fiyatı otomatik güncelle"
+            >
+              {isFetchingPrice === `${investment.type}-${investment.fundName}` ? (
+                <LoadingSpinner size="sm" aria-label="Fiyat güncelleniyor" />
+              ) : (
+                <RefreshCw size={18} aria-hidden="true" />
+              )}
+              <span className="sr-only">Fiyatı Otomatik Güncelle</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={(e) => handleQuickEditCurrentValue(investment, e)}
@@ -580,6 +796,28 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Bulk update button for döviz and hisse */}
+                  {(type === 'döviz' || type === 'hisse') && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleBulkUpdatePrices(type);
+                      }}
+                      disabled={isBulkUpdating === type}
+                      className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors cursor-pointer z-10 relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label={`${getTypeLabel(type)} kategorisindeki tüm fiyatları güncelle`}
+                      title="Tüm fiyatları güncelle"
+                    >
+                      {isBulkUpdating === type ? (
+                        <LoadingSpinner size="sm" aria-label="Fiyatlar güncelleniyor" />
+                      ) : (
+                        <RefreshCw size={18} aria-hidden="true" />
+                      )}
+                      <span className="sr-only">Tüm Fiyatları Güncelle</span>
+                    </button>
+                  )}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300" aria-label={`Toplam tutar: ${formatCurrency(categoryTotal)}`}>
                     {formatCurrency(categoryTotal)}
                   </span>
@@ -641,20 +879,27 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="text-right">
-                                  <span className="text-sm font-semibold text-gray-900 dark:text-white block" aria-label={`Toplam tutar: ${formatCurrency(fundTotal)}`}>
-                                    {formatCurrency(fundTotal)}
-                                  </span>
-                                  {hasFundProfitLoss && (
-                                    <span className={`text-xs font-medium ${
-                                      fundProfitLoss >= 0 
-                                        ? 'text-green-600 dark:text-green-400' 
-                                        : 'text-red-600 dark:text-red-400'
-                                    }`}
-                                    aria-label={`${fundProfitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(fundProfitLoss)} (${formatPercentage(fundProfitLossPercentage)})`}
-                                    >
-                                      {fundProfitLoss >= 0 ? '+' : ''}{formatCurrency(fundProfitLoss)} ({formatPercentage(fundProfitLossPercentage)})
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const fundTotalDisplay = formatFundTotal(fundInvestments, fundName, type);
+                                    return (
+                                      <>
+                                        <span className="text-sm font-semibold text-gray-900 dark:text-white block" aria-label={`Toplam tutar: ${fundTotalDisplay.primary}`}>
+                                          {fundTotalDisplay.primary}
+                                        </span>
+                                        {hasFundProfitLoss && (
+                                          <span className={`text-xs font-medium ${
+                                            fundProfitLoss >= 0 
+                                              ? 'text-green-600 dark:text-green-400' 
+                                              : 'text-red-600 dark:text-red-400'
+                                          }`}
+                                          aria-label={`${fundProfitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(fundProfitLoss)} (${formatPercentage(fundProfitLossPercentage)})`}
+                                          >
+                                            {fundProfitLoss >= 0 ? '+' : ''}{formatCurrency(fundProfitLoss)} ({formatPercentage(fundProfitLossPercentage)})
+                                          </span>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                                 {isFundExpanded ? (
                                   <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" aria-hidden="true" />
@@ -663,6 +908,30 @@ function InvestmentList({ investments, onUpdate }: InvestmentListProps) {
                                 )}
                               </div>
                             </button>
+                            {/* Auto-fetch price button (only for döviz and hisse) */}
+                            {(type === 'döviz' || type === 'hisse') && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const currency = fundInvestments[0]?.currency;
+                                  handleFetchPrice(fundName, type, currency);
+                                }}
+                                disabled={isFetchingPrice === fundKey}
+                                className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors cursor-pointer z-10 relative ml-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                aria-label={`${fundName} için fiyatı otomatik güncelle`}
+                                style={{ pointerEvents: 'auto' }}
+                                title="Fiyatı otomatik güncelle"
+                              >
+                                {isFetchingPrice === fundKey ? (
+                                  <LoadingSpinner size="sm" aria-label="Fiyat güncelleniyor" />
+                                ) : (
+                                  <RefreshCw size={18} aria-hidden="true" />
+                                )}
+                                <span className="sr-only">Fiyatı Otomatik Güncelle</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={handleFundQuickEdit}
