@@ -14,14 +14,11 @@ Firebase permission hatası alıyorsanız, Firebase Console'dan security rules'l
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Investments collection - public read/write for shared-user
     match /investments/{userId} {
-      allow read, write: if true;
+      allow read, write: if userId == 'portfolio-user-shared';
     }
-    
-    // Fund current values collection - public read/write for shared-user
-    match /fund-current-values/{userId} {
-      allow read, write: if true;
+    match /fundValues/{userId} {
+      allow read, write: if userId == 'portfolio-user-shared';
     }
   }
 }

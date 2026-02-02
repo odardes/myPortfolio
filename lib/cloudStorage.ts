@@ -10,8 +10,8 @@ import {
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 const COLLECTION_NAME = 'investments';
-const FUND_VALUES_COLLECTION = 'fund-current-values';
-const STATIC_USER_ID = 'shared-user'; // Tüm kullanıcılar için ortak ID
+const FUND_VALUES_COLLECTION = 'fundValues';
+const STATIC_USER_ID = 'portfolio-user-shared'; // Tüm kullanıcılar için ortak ID
 
 // Firebase kullanılabilir mi kontrolü
 export function isFirebaseAvailable(): boolean {
