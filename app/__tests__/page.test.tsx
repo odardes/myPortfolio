@@ -54,8 +54,8 @@ describe('Home Page', () => {
     fireEvent.click(addButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/Fon Adı/i)).toBeInTheDocument();
-    });
+      expect(screen.getByLabelText(/Fon Adı/i)).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 
   it('should display summary cards', async () => {

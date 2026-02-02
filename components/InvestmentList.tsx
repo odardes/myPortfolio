@@ -2,7 +2,7 @@
 
 import { Investment, InvestmentType } from '@/types/investment';
 import { formatCurrency, formatDate, getTypeColor, getTypeLabel, calculateProfitLoss, formatPercentage } from '@/lib/utils';
-import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, Search, Filter, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import InvestmentForm from './InvestmentForm';
 import { saveInvestmentsSync, saveInvestments } from '@/lib/storage';
@@ -27,6 +27,12 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
   const [expandedFunds, setExpandedFunds] = useState<Set<string>>(new Set());
   const [editingCurrentValue, setEditingCurrentValue] = useState<{fundName: string; type: InvestmentType} | null>(null);
   const [currentValueInput, setCurrentValueInput] = useState<string>('');
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterType, setFilterType] = useState<InvestmentType | 'all'>('all');
+  const [filterCurrency, setFilterCurrency] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState<boolean>(false);
 
   const handleDelete = (id: string) => {
     const updated = investments.filter(inv => inv.id !== id);
@@ -130,10 +136,36 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     });
   };
 
+  // Filter investments based on search and filters
+  const filteredInvestments = useMemo(() => {
+    return investments.filter((investment) => {
+      // Search filter (fundName)
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        if (!investment.fundName.toLowerCase().includes(query) &&
+            !investment.notes?.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      
+      // Type filter
+      if (filterType !== 'all' && investment.type !== filterType) {
+        return false;
+      }
+      
+      // Currency filter
+      if (filterCurrency !== 'all' && investment.currency !== filterCurrency) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [investments, searchQuery, filterType, filterCurrency]);
+
   const groupedInvestments = useMemo(() => {
     const grouped: GroupedInvestments = {};
     
-    investments.forEach((investment) => {
+    filteredInvestments.forEach((investment) => {
       if (!grouped[investment.type]) {
         grouped[investment.type] = {};
       }
@@ -152,7 +184,28 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     });
 
     return grouped;
+  }, [filteredInvestments]);
+  
+  // Get unique currencies for filter dropdown
+  const uniqueCurrencies = useMemo(() => {
+    const currencies = new Set<string>();
+    investments.forEach(inv => {
+      if (inv.currency) {
+        currencies.add(inv.currency);
+      }
+    });
+    return Array.from(currencies).sort();
   }, [investments]);
+  
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery.trim() !== '' || filterType !== 'all' || filterCurrency !== 'all';
+  
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterType('all');
+    setFilterCurrency('all');
+  };
 
   const categoryOrder: InvestmentType[] = ['fon', 'döviz', 'diğer'];
 
@@ -298,9 +351,147 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
 
   return (
     <section className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6" aria-labelledby="investment-history-heading">
-      <h3 id="investment-history-heading" className="text-xl font-semibold text-gray-800 dark:text-white mb-6">
-        Yatırım Geçmişi
-      </h3>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h3 id="investment-history-heading" className="text-xl font-semibold text-gray-800 dark:text-white">
+          Yatırım Geçmişi
+          {hasActiveFilters && (
+            <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+              ({filteredInvestments.length} sonuç)
+            </span>
+          )}
+        </h3>
+        
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Search Bar */}
+          <div className="relative flex-1 sm:min-w-[250px]">
+            <Search 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" 
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Fon adı veya notlarda ara..."
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+              aria-label="Yatırımlarda ara"
+              aria-describedby="search-hint"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                aria-label="Arama metnini temizle"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
+            <p id="search-hint" className="sr-only">Fon adı veya notlarda arama yapabilirsiniz</p>
+          </div>
+          
+          {/* Filter Toggle Button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 transition-colors ${
+              hasActiveFilters
+                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+            }`}
+            aria-expanded={showFilters}
+            aria-controls="filter-panel"
+            aria-label="Filtreleri göster veya gizle"
+          >
+            <Filter className="w-4 h-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Filtrele</span>
+            {hasActiveFilters && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-200 dark:bg-blue-800 rounded-full" aria-label="Aktif filtre sayısı">
+                {[filterType !== 'all', filterCurrency !== 'all'].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+      
+      {/* Filter Panel */}
+      {showFilters && (
+        <div
+          id="filter-panel"
+          className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
+          role="region"
+          aria-label="Filtre seçenekleri"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Type Filter */}
+            <div>
+              <label htmlFor="filter-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Yatırım Türü
+              </label>
+              <select
+                id="filter-type"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as InvestmentType | 'all')}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                aria-label="Yatırım türüne göre filtrele"
+              >
+                <option value="all">Tümü</option>
+                <option value="fon">Fon</option>
+                <option value="döviz">Döviz</option>
+                <option value="hisse">Hisse Senedi</option>
+                <option value="diğer">Diğer</option>
+              </select>
+            </div>
+            
+            {/* Currency Filter */}
+            <div>
+              <label htmlFor="filter-currency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Para Birimi
+              </label>
+              <select
+                id="filter-currency"
+                value={filterCurrency}
+                onChange={(e) => setFilterCurrency(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                aria-label="Para birimine göre filtrele"
+              >
+                <option value="all">Tümü</option>
+                {uniqueCurrencies.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <button
+                onClick={clearFilters}
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                aria-label="Tüm filtreleri temizle"
+              >
+                Filtreleri Temizle
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* No Results Message */}
+      {hasActiveFilters && filteredInvestments.length === 0 && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
+          <p>Arama kriterlerinize uygun yatırım bulunamadı.</p>
+          <button
+            onClick={clearFilters}
+            className="mt-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+          >
+            Filtreleri temizle
+          </button>
+        </div>
+      )}
+      
       <div className="space-y-4" role="region" aria-label="Yatırım kategorileri">
         {categoryOrder.map((type) => {
           const categoryInvestments = groupedInvestments[type];

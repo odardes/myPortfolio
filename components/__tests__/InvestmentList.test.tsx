@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import InvestmentList from '../InvestmentList';
 import { Investment } from '@/types/investment';
 
@@ -11,10 +12,10 @@ jest.mock('@/lib/storage', () => ({
 const mockOnUpdate = jest.fn();
 
 const mockInvestments: Investment[] = [
-  { id: '1', date: '2025-01-01', type: 'fon', fundName: 'Altın Fon', amount: 1000, currentValue: 1200 },
-  { id: '2', date: '2025-01-02', type: 'fon', fundName: 'Gümüş Fon', amount: 2000 },
-  { id: '3', date: '2025-01-03', type: 'döviz', fundName: 'Dolar', amount: 500 },
-  { id: '4', date: '2025-01-04', type: 'diğer', fundName: 'GTL', amount: 300 },
+  { id: '1', date: '2025-01-01', type: 'fon', fundName: 'Altın Fon', amount: 1000, currentValue: 1200, currency: 'TRY' },
+  { id: '2', date: '2025-01-02', type: 'fon', fundName: 'Gümüş Fon', amount: 2000, currency: 'TRY' },
+  { id: '3', date: '2025-01-03', type: 'döviz', fundName: 'Dolar', amount: 500, currency: 'USD' },
+  { id: '4', date: '2025-01-04', type: 'diğer', fundName: 'GTL', amount: 300, currency: 'TRY', notes: 'Test notu' },
 ];
 
 describe('InvestmentList', () => {
@@ -64,5 +65,102 @@ describe('InvestmentList', () => {
     // This would require expanding the category first
     // For now, just verify the component renders
     expect(screen.getByText('Yatırım Geçmişi')).toBeInTheDocument();
+  });
+
+  describe('Search functionality', () => {
+    it('should filter investments by fund name', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const searchInput = screen.getByLabelText(/yatırımlarda ara/i);
+      await user.type(searchInput, 'Altın');
+      
+      await waitFor(() => {
+        expect(screen.getByText(/1 sonuç/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should filter investments by notes', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const searchInput = screen.getByLabelText(/yatırımlarda ara/i);
+      await user.type(searchInput, 'Test');
+      
+      await waitFor(() => {
+        expect(screen.getByText(/1 sonuç/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should clear search when clear button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const searchInput = screen.getByLabelText(/yatırımlarda ara/i);
+      await user.type(searchInput, 'Altın');
+      
+      const clearButton = screen.getByLabelText(/arama metnini temizle/i);
+      await user.click(clearButton);
+      
+      expect(searchInput).toHaveValue('');
+    });
+  });
+
+  describe('Filter functionality', () => {
+    it('should show filter panel when filter button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const filterButton = screen.getByLabelText(/filtreleri göster/i);
+      await user.click(filterButton);
+      
+      expect(screen.getByLabelText(/filtre seçenekleri/i)).toBeInTheDocument();
+    });
+
+    it('should filter by investment type', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const filterButton = screen.getByLabelText(/filtreleri göster/i);
+      await user.click(filterButton);
+      
+      const typeFilter = screen.getByLabelText(/yatırım türüne göre filtrele/i);
+      await user.selectOptions(typeFilter, 'fon');
+      
+      await waitFor(() => {
+        expect(screen.getByText(/2 sonuç/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should filter by currency', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const filterButton = screen.getByLabelText(/filtreleri göster/i);
+      await user.click(filterButton);
+      
+      const currencyFilter = screen.getByLabelText(/para birimine göre filtrele/i);
+      await user.selectOptions(currencyFilter, 'USD');
+      
+      await waitFor(() => {
+        expect(screen.getByText(/1 sonuç/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should clear all filters when clear button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<InvestmentList investments={mockInvestments} onUpdate={mockOnUpdate} />);
+      
+      const filterButton = screen.getByLabelText(/filtreleri göster/i);
+      await user.click(filterButton);
+      
+      const typeFilter = screen.getByLabelText(/yatırım türüne göre filtrele/i);
+      await user.selectOptions(typeFilter, 'fon');
+      
+      const clearButton = screen.getByLabelText(/tüm filtreleri temizle/i);
+      await user.click(clearButton);
+      
+      expect(typeFilter).toHaveValue('all');
+    });
   });
 });
