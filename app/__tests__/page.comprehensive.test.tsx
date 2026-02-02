@@ -40,6 +40,11 @@ describe('Home Page Comprehensive', () => {
     
     renderWithTheme(<Home />);
     
+    // Wait for component to mount and async operations to complete
+    await waitFor(() => {
+      expect(screen.getByText('Yatırım Portföyüm')).toBeInTheDocument();
+    });
+    
     await waitFor(() => {
       expect(mockGetInvestmentsSync).toHaveBeenCalled();
     });
@@ -63,6 +68,11 @@ describe('Home Page Comprehensive', () => {
     mockSaveInvestments.mockRejectedValueOnce(new Error('Save error'));
     
     renderWithTheme(<Home />);
+    
+    // Wait for initial render
+    await waitFor(() => {
+      expect(screen.getByText('Yeni Yatırım Ekle')).toBeInTheDocument();
+    });
     
     const addButton = screen.getByText('Yeni Yatırım Ekle');
     fireEvent.click(addButton);

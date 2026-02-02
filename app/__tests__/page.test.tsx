@@ -34,15 +34,21 @@ describe('Home Page', () => {
     Storage.prototype.setItem = jest.fn();
   });
 
-  it('should render main page elements', () => {
+  it('should render main page elements', async () => {
     renderWithTheme(<Home />);
     
-    expect(screen.getByText('Yatırım Portföyüm')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Yatırım Portföyüm')).toBeInTheDocument();
+    });
     expect(screen.getByText('Yeni Yatırım Ekle')).toBeInTheDocument();
   });
 
   it('should show add form when button is clicked', async () => {
     renderWithTheme(<Home />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Yeni Yatırım Ekle')).toBeInTheDocument();
+    });
     
     const addButton = screen.getByText('Yeni Yatırım Ekle');
     fireEvent.click(addButton);
@@ -52,34 +58,51 @@ describe('Home Page', () => {
     });
   });
 
-  it('should display summary cards', () => {
+  it('should display summary cards', async () => {
     renderWithTheme(<Home />);
-    // Summary cards should be rendered (even if empty)
-    expect(screen.getByText('Toplam Yatırım')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Toplam Yatırım')).toBeInTheDocument();
+    });
   });
 
-  it('should display performance chart', () => {
+  it('should display performance chart', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Zaman Bazında Performans')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Zaman Bazında Performans')).toBeInTheDocument();
+    });
   });
 
-  it('should display portfolio chart', () => {
+  it('should display portfolio chart', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Portföy Dağılımı')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Portföy Dağılımı')).toBeInTheDocument();
+    });
   });
 
-  it('should display fund distribution', () => {
+  it('should display fund distribution', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Fon Bazında Dağılım')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Fon Bazında Dağılım')).toBeInTheDocument();
+    });
   });
 
-  it('should display performance section', () => {
+  it('should display performance section', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Performans')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Performans')).toBeInTheDocument();
+    });
   });
 
-  it('should display investment history', () => {
+  it('should display investment history', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Yatırım Geçmişi')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Yatırım Geçmişi')).toBeInTheDocument();
+    });
   });
 });

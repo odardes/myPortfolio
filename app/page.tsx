@@ -96,59 +96,77 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        Ana içeriğe geç
+      </a>
+      
+      {/* Screen reader announcements */}
+      <div id="announcements" aria-live="polite" aria-atomic="true" className="sr-only"></div>
+      
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Yatırım Portföyüm</h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">Yatırımlarınızı takip edin ve analiz edin</p>
             </div>
-            <div className="flex items-center gap-3">
+            <nav className="flex items-center gap-3" aria-label="Ana navigasyon">
               <ThemeToggle />
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md"
+                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-label={showAddForm ? 'Yatırım ekleme formunu kapat' : 'Yeni yatırım ekleme formunu aç'}
+                aria-expanded={showAddForm}
               >
-                <Plus size={20} />
+                <Plus size={20} aria-hidden="true" />
                 Yeni Yatırım Ekle
               </button>
-            </div>
+            </nav>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" role="main">
         {/* Total Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 text-white">
+        <section aria-label="Portföy özeti" className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 text-white" role="region" aria-label="Toplam yatırım bilgileri">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm font-medium mb-1">Toplam Yatırım</p>
-                <p className="text-4xl font-bold">{formatCurrency(stats.totalInvested)}</p>
-                <p className="text-blue-100 text-sm mt-2">
+                <p className="text-4xl font-bold" aria-label={`Toplam yatırım: ${formatCurrency(stats.totalInvested)}`}>
+                  {formatCurrency(stats.totalInvested)}
+                </p>
+                <p className="text-blue-100 text-sm mt-2" aria-label={`${investments.length} yatırım, ${summary.length} farklı kategori`}>
                   {investments.length} yatırım • {summary.length} farklı kategori
                 </p>
               </div>
-              <div className="bg-white/20 rounded-full p-4">
+              <div className="bg-white/20 rounded-full p-4" aria-hidden="true">
                 <TrendingUp size={32} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6" role="region" aria-label="Toplam kar/zarar bilgileri">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">Toplam Kar/Zarar</p>
                 {hasProfitLoss ? (
                   <>
-                    <p className={`text-4xl font-bold ${
-                      totalProfitLoss >= 0 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
+                    <p 
+                      className={`text-4xl font-bold ${
+                        totalProfitLoss >= 0 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-red-600 dark:text-red-400'
+                      }`}
+                      aria-label={`${totalProfitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(totalProfitLoss)}`}
+                    >
                       {formatCurrency(totalProfitLoss)}
                     </p>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mt-2" aria-label={`Güncel değer: ${formatCurrency(totalCurrentValue)}, yüzde: ${formatPercentage(totalProfitLossPercentage)}`}>
                       Güncel Değer: {formatCurrency(totalCurrentValue)} • {formatPercentage(totalProfitLossPercentage)}
                     </p>
                   </>
@@ -161,13 +179,16 @@ export default function Home() {
                   </>
                 )}
               </div>
-              <div className={`rounded-full p-4 ${
-                hasProfitLoss 
-                  ? totalProfitLoss >= 0 
-                    ? 'bg-green-100 dark:bg-green-900/30' 
-                    : 'bg-red-100 dark:bg-red-900/30'
-                  : 'bg-gray-100 dark:bg-gray-700'
-              }`}>
+              <div 
+                className={`rounded-full p-4 ${
+                  hasProfitLoss 
+                    ? totalProfitLoss >= 0 
+                      ? 'bg-green-100 dark:bg-green-900/30' 
+                      : 'bg-red-100 dark:bg-red-900/30'
+                    : 'bg-gray-100 dark:bg-gray-700'
+                }`}
+                aria-hidden="true"
+              >
                 {hasProfitLoss ? (
                   totalProfitLoss >= 0 ? (
                     <TrendingUp size={32} className="text-green-600 dark:text-green-400" />
@@ -180,7 +201,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Add Investment Form */}
         {showAddForm && (
@@ -193,7 +214,7 @@ export default function Home() {
         )}
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <section aria-label="Yatırım kategorileri özeti" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {summary.map((item) => (
             <SummaryCard
               key={item.type}
@@ -207,7 +228,7 @@ export default function Home() {
               }
             />
           ))}
-        </div>
+        </section>
 
         {/* Performance Chart */}
         <div className="mb-8">
@@ -215,11 +236,13 @@ export default function Home() {
         </div>
 
         {/* Charts and List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <section aria-label="Grafikler ve dağılımlar" className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <PortfolioChart data={summary} />
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Fon Bazında Dağılım</h3>
-            <div className="space-y-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6" role="region" aria-labelledby="fund-distribution-heading">
+            <h3 id="fund-distribution-heading" className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+              Fon Bazında Dağılım
+            </h3>
+            <div className="space-y-3" role="list" aria-label="Fon dağılım listesi">
               {useMemo(() => 
                 Object.entries(stats.byFund)
                   .sort(([, a], [, b]) => b - a)
@@ -232,64 +255,77 @@ export default function Home() {
                     const percentage = stats.totalInvested > 0 ? ((amount / stats.totalInvested) * 100).toFixed(1) : '0';
                     
                     return (
-                      <div key={fund} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div key={fund} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg" role="listitem" aria-label={`${fund} fonu, tutar: ${formatCurrency(amount)}, yüzde: %${percentage}${hasFundProfitLoss ? `, ${fundProfitLoss >= 0 ? 'kar' : 'zarar'}: ${formatCurrency(fundProfitLoss)}` : ''}`}>
                         <div className="flex-1">
                           <span className="font-medium text-gray-800 dark:text-white block">{fund}</span>
                           {hasFundProfitLoss && (
-                            <span className={`text-xs font-medium mt-1 ${
-                              fundProfitLoss >= 0 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
+                            <span 
+                              className={`text-xs font-medium mt-1 ${
+                                fundProfitLoss >= 0 
+                                  ? 'text-green-600 dark:text-green-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}
+                              aria-label={`${fundProfitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(fundProfitLoss)}, yüzde: ${formatPercentage(fundProfitLossPercentage)}`}
+                            >
                               {fundProfitLoss >= 0 ? '+' : ''}{formatCurrency(fundProfitLoss)} ({formatPercentage(fundProfitLossPercentage)})
                             </span>
                           )}
                         </div>
                         <div className="text-right">
-                          <span className="text-lg font-bold text-gray-900 dark:text-white block">
+                          <span className="text-lg font-bold text-gray-900 dark:text-white block" aria-label={`Toplam tutar: ${formatCurrency(amount)}`}>
                             {formatCurrency(amount)}
                           </span>
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="text-sm text-gray-600 dark:text-gray-400" aria-label={`Yüzde: %${percentage}`}>
                             (%{percentage})
                           </span>
                           {hasFundProfitLoss && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 block mt-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 block mt-1" aria-label={`Güncel değer: ${formatCurrency(fundCurrentValue)}`}>
                               Güncel: {formatCurrency(fundCurrentValue)}
                             </span>
                           )}
                         </div>
                       </div>
                     );
-                  }), [investments, stats.byFund, stats.totalInvested])
-              }
+                  }), [investments, stats.byFund, stats.totalInvested])}
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Performance Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Performans</h3>
+        <section className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8" aria-labelledby="performance-heading">
+          <h3 id="performance-heading" className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+            Performans
+          </h3>
           {hasProfitLoss ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" role="group" aria-label="Performans metrikleri">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4" role="region" aria-label="Toplam yatırım">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Toplam Yatırım</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalInvested)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white" aria-label={`Toplam yatırım: ${formatCurrency(stats.totalInvested)}`}>
+                  {formatCurrency(stats.totalInvested)}
+                </p>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4" role="region" aria-label="Güncel değer">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Güncel Değer</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalCurrentValue)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white" aria-label={`Güncel değer: ${formatCurrency(totalCurrentValue)}`}>
+                  {formatCurrency(totalCurrentValue)}
+                </p>
               </div>
               <div className={`rounded-lg p-4 ${
                 totalProfitLoss >= 0 
                   ? 'bg-green-50 dark:bg-green-900/20' 
                   : 'bg-red-50 dark:bg-red-900/20'
-              }`}>
+              }`}
+              role="region"
+              aria-label={`${totalProfitLoss >= 0 ? 'Kar' : 'Zarar'}`}
+              >
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Kar/Zarar</p>
                 <p className={`text-2xl font-bold ${
                   totalProfitLoss >= 0 
                     ? 'text-green-600 dark:text-green-400' 
                     : 'text-red-600 dark:text-red-400'
-                }`}>
+                }`}
+                aria-label={`${totalProfitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(totalProfitLoss)}`}
+                >
                   {totalProfitLoss >= 0 ? '+' : ''}{formatCurrency(totalProfitLoss)}
                 </p>
                 <p className={`text-sm mt-1 ${
@@ -302,12 +338,12 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
               <p className="text-lg mb-2">Mevcut değer girilen yatırım yok</p>
               <p className="text-sm">Yatırımlarınıza mevcut değer ekleyin</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Investment List */}
         <InvestmentList investments={investments} onUpdate={handleUpdate} />

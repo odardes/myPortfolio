@@ -29,6 +29,10 @@ describe('Home Page Interactions', () => {
   it('should toggle add form visibility', async () => {
     renderWithTheme(<Home />);
     
+    await waitFor(() => {
+      expect(screen.getByText('Yeni Yatırım Ekle')).toBeInTheDocument();
+    });
+    
     const addButton = screen.getByText('Yeni Yatırım Ekle');
     expect(screen.queryByPlaceholderText(/Altın Fon/i)).not.toBeInTheDocument();
     
@@ -45,20 +49,29 @@ describe('Home Page Interactions', () => {
     });
   });
 
-  it('should display correct summary statistics', () => {
+  it('should display correct summary statistics', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Toplam Yatırım')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Toplam Yatırım')).toBeInTheDocument();
+    });
     expect(screen.getByText('Toplam Kar/Zarar')).toBeInTheDocument();
   });
 
-  it('should show "Mevcut değer girilmemiş" when no current values', () => {
+  it('should show "Mevcut değer girilmemiş" when no current values', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText(/Mevcut değer girilmemiş/i)).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText(/Mevcut değer girilmemiş/i)).toBeInTheDocument();
+    });
   });
 
-  it('should display all chart sections', () => {
+  it('should display all chart sections', async () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText('Zaman Bazında Performans')).toBeInTheDocument();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Zaman Bazında Performans')).toBeInTheDocument();
+    });
     expect(screen.getByText('Portföy Dağılımı')).toBeInTheDocument();
     expect(screen.getByText('Fon Bazında Dağılım')).toBeInTheDocument();
     expect(screen.getByText('Performans')).toBeInTheDocument();

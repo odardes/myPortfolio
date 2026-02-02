@@ -176,71 +176,80 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
         key={investment.id}
         className="flex items-center justify-between p-3 pl-8 border-l-2 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all"
         onClick={(e) => e.stopPropagation()}
+        role="listitem"
+        aria-label={`${investment.fundName} yatırımı, ${formatDate(investment.date)}, tutar: ${formatCurrency(investment.amount)}`}
       >
         <div className="flex items-center gap-3 flex-1">
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
+              <time className="text-sm font-medium text-gray-900 dark:text-white" dateTime={investment.date}>
                 {formatDate(investment.date)}
-              </span>
+              </time>
               {investment.price && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-gray-500 dark:text-gray-400" aria-label={`Birim fiyat: ${formatCurrency(investment.price)}`}>
                   • {formatCurrency(investment.price)}/birim
                 </span>
               )}
             </div>
             {hasProfitLoss ? (
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1" role="status" aria-live="polite">
                 {profitLoss >= 0 ? (
-                  <TrendingUp size={14} className="text-green-600 dark:text-green-400" />
+                  <TrendingUp size={14} className="text-green-600 dark:text-green-400" aria-hidden="true" />
                 ) : (
-                  <TrendingDown size={14} className="text-red-600 dark:text-red-400" />
+                  <TrendingDown size={14} className="text-red-600 dark:text-red-400" aria-hidden="true" />
                 )}
-                <span className={`text-xs font-medium ${
-                  profitLoss >= 0 
-                    ? 'text-green-600 dark:text-green-400' 
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
+                <span 
+                  className={`text-xs font-medium ${
+                    profitLoss >= 0 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-red-600 dark:text-red-400'
+                  }`}
+                  aria-label={`${profitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(profitLoss)}, yüzde: ${formatPercentage(profitLossPercentage)}`}
+                >
                   {formatCurrency(profitLoss)} ({formatPercentage(profitLossPercentage)})
                 </span>
                 {investment.currentValue && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-xs text-gray-500 dark:text-gray-400" aria-label={`Güncel değer: ${formatCurrency(investment.currentValue)}`}>
                     • Güncel: {formatCurrency(investment.currentValue)}
                   </span>
                 )}
               </div>
             ) : (
               <div className="mt-1">
-                <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-                  💡 Kar/zarar görmek için düzenle butonuna tıklayıp &quot;Güncel Değer&quot; girin
+                <span className="text-xs text-gray-400 dark:text-gray-500 italic" role="note">
+                  Kar/zarar görmek için düzenle butonuna tıklayıp &quot;Güncel Değer&quot; girin
                 </span>
               </div>
             )}
           </div>
           <div className="text-right">
-            <p className="text-base font-semibold text-gray-900 dark:text-white">
+            <p className="text-base font-semibold text-gray-900 dark:text-white" aria-label={`Yatırım tutarı: ${formatCurrency(investment.amount)}`}>
               {formatCurrency(investment.amount)}
             </p>
             {hasProfitLoss && (
-              <p className={`text-sm font-medium ${
-                profitLoss >= 0 
-                  ? 'text-green-600 dark:text-green-400' 
-                  : 'text-red-600 dark:text-red-400'
-              }`}>
+              <p 
+                className={`text-sm font-medium ${
+                  profitLoss >= 0 
+                    ? 'text-green-600 dark:text-green-400' 
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+                aria-label={`${profitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(profitLoss)}`}
+              >
                 {profitLoss >= 0 ? '+' : ''}{formatCurrency(profitLoss)}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 ml-4">
+        <div className="flex items-center gap-2 ml-4" role="group" aria-label="Yatırım işlemleri">
           <button
             type="button"
             onClick={(e) => handleQuickEditCurrentValue(investment, e)}
-            className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors cursor-pointer z-10 relative"
-            title="Güncel Değer Gir"
+            className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors cursor-pointer z-10 relative focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            aria-label={`${investment.fundName} için güncel değer gir`}
             style={{ pointerEvents: 'auto' }}
           >
-            <DollarSign size={18} />
+            <DollarSign size={18} aria-hidden="true" />
+            <span className="sr-only">Güncel Değer Gir</span>
           </button>
           <button
             type="button"
@@ -249,22 +258,25 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
               e.stopPropagation();
               setEditingId(investment.id);
             }}
-            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-            title="Düzenle"
+            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label={`${investment.fundName} yatırımını düzenle`}
           >
-            <Edit size={16} />
+            <Edit size={16} aria-hidden="true" />
+            <span className="sr-only">Düzenle</span>
           </button>
           {deleteConfirm === investment.id ? (
-            <div className="flex gap-1">
+            <div className="flex gap-1" role="group" aria-label="Silme onayı">
               <button
                 onClick={() => handleDelete(investment.id)}
-                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                aria-label="Silme işlemini onayla"
               >
                 Sil
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                aria-label="Silme işlemini iptal et"
               >
                 İptal
               </button>
@@ -272,10 +284,11 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
           ) : (
             <button
               onClick={() => setDeleteConfirm(investment.id)}
-              className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-              title="Sil"
+              className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              aria-label={`${investment.fundName} yatırımını sil`}
             >
-              <Trash2 size={16} />
+              <Trash2 size={16} aria-hidden="true" />
+              <span className="sr-only">Sil</span>
             </button>
           )}
         </div>
@@ -284,9 +297,11 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-      <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">Yatırım Geçmişi</h3>
-      <div className="space-y-4">
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6" aria-labelledby="investment-history-heading">
+      <h3 id="investment-history-heading" className="text-xl font-semibold text-gray-800 dark:text-white mb-6">
+        Yatırım Geçmişi
+      </h3>
+      <div className="space-y-4" role="region" aria-label="Yatırım kategorileri">
         {categoryOrder.map((type) => {
           const categoryInvestments = groupedInvestments[type];
           if (!categoryInvestments || Object.keys(categoryInvestments).length === 0) {
@@ -309,11 +324,16 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
             >
               <button
                 onClick={() => toggleCategory(type)}
-                className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-expanded={isExpanded}
+                aria-controls={`category-${type}-content`}
+                aria-label={`${getTypeLabel(type)} kategorisini ${isExpanded ? 'kapat' : 'aç'}`}
               >
                 <div className="flex items-center gap-3">
                   <div 
-                    className={`w-4 h-4 rounded-full ${getTypeColor(type)}`} 
+                    className={`w-4 h-4 rounded-full ${getTypeColor(type)}`}
+                    role="img"
+                    aria-label={`${getTypeLabel(type)} kategorisi rengi`}
                     style={{ 
                       minWidth: '16px', 
                       minHeight: '16px',
@@ -328,19 +348,19 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300" aria-label={`Toplam tutar: ${formatCurrency(categoryTotal)}`}>
                     {formatCurrency(categoryTotal)}
                   </span>
                   {isExpanded ? (
-                    <ChevronUp size={20} className="text-gray-600 dark:text-gray-400" />
+                    <ChevronUp size={20} className="text-gray-600 dark:text-gray-400" aria-hidden="true" />
                   ) : (
-                    <ChevronDown size={20} className="text-gray-600 dark:text-gray-400" />
+                    <ChevronDown size={20} className="text-gray-600 dark:text-gray-400" aria-hidden="true" />
                   )}
                 </div>
               </button>
 
               {isExpanded && (
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                <div id={`category-${type}-content`} className="divide-y divide-gray-100 dark:divide-gray-700" role="region" aria-label={`${getTypeLabel(type)} kategorisi yatırımları`}>
                   {Object.entries(categoryInvestments)
                     .sort(([, a], [, b]) => {
                       const totalA = a.reduce((sum, inv) => sum + inv.amount, 0);
@@ -374,19 +394,22 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                           <div className="w-full flex items-center justify-between p-3 px-4">
                             <button
                               onClick={() => toggleFund(fundKey)}
-                              className="flex-1 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded p-1 -m-1"
+                              className="flex-1 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded p-1 -m-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                              aria-expanded={isFundExpanded}
+                              aria-controls={`fund-${fundKey}-content`}
+                              aria-label={`${fundName} fonunu ${isFundExpanded ? 'kapat' : 'aç'}`}
                             >
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                   {fundName}
                                 </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                <span className="text-xs text-gray-500 dark:text-gray-400" aria-label={`${fundInvestments.length} yatırım`}>
                                   ({fundInvestments.length} yatırım)
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="text-right">
-                                  <span className="text-sm font-semibold text-gray-900 dark:text-white block">
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-white block" aria-label={`Toplam tutar: ${formatCurrency(fundTotal)}`}>
                                     {formatCurrency(fundTotal)}
                                   </span>
                                   {hasFundProfitLoss && (
@@ -394,34 +417,37 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                       fundProfitLoss >= 0 
                                         ? 'text-green-600 dark:text-green-400' 
                                         : 'text-red-600 dark:text-red-400'
-                                    }`}>
+                                    }`}
+                                    aria-label={`${fundProfitLoss >= 0 ? 'Kar' : 'Zarar'}: ${formatCurrency(fundProfitLoss)} (${formatPercentage(fundProfitLossPercentage)})`}
+                                    >
                                       {fundProfitLoss >= 0 ? '+' : ''}{formatCurrency(fundProfitLoss)} ({formatPercentage(fundProfitLossPercentage)})
                                     </span>
                                   )}
                                 </div>
                                 {isFundExpanded ? (
-                                  <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" />
+                                  <ChevronUp size={16} className="text-gray-500 dark:text-gray-400" aria-hidden="true" />
                                 ) : (
-                                  <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
+                                  <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" aria-hidden="true" />
                                 )}
                               </div>
                             </button>
                             <button
                               type="button"
                               onClick={handleFundQuickEdit}
-                              className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors cursor-pointer z-10 relative ml-2"
-                              title="Fon için Güncel Değer Gir"
+                              className="p-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors cursor-pointer z-10 relative ml-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                              aria-label={`${fundName} fonu için güncel değer gir`}
                               style={{ pointerEvents: 'auto' }}
                             >
-                              <DollarSign size={18} />
+                              <DollarSign size={18} aria-hidden="true" />
+                              <span className="sr-only">Güncel Değer Gir</span>
                             </button>
                           </div>
 
                           {isFundExpanded && (
-                            <>
+                            <div id={`fund-${fundKey}-content`} role="region" aria-label={`${fundName} fonu yatırımları`}>
                               {editingCurrentValue?.fundName === fundName && editingCurrentValue?.type === type ? (
-                                <div className="bg-green-50 dark:bg-green-900/20 p-4 border-t border-green-200 dark:border-green-800">
-                                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                                <div className="bg-green-50 dark:bg-green-900/20 p-4 border-t border-green-200 dark:border-green-800" role="dialog" aria-labelledby={`current-value-dialog-${fundKey}`} aria-modal="false">
+                                  <h4 id={`current-value-dialog-${fundKey}`} className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                                     {fundName} - Mevcut Değer Girişi
                                   </h4>
                                   <div className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -429,17 +455,23 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                     <p>Yatırım Sayısı: <span className="font-semibold text-gray-900 dark:text-white">{fundInvestments.length}</span></p>
                                   </div>
                                   <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label htmlFor={`current-value-input-${fundKey}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                       Mevcut Değer (TRY)
                                     </label>
                                     <input
+                                      id={`current-value-input-${fundKey}`}
                                       type="text"
                                       value={currentValueInput}
                                       onChange={(e) => setCurrentValueInput(e.target.value)}
                                       className="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                                       placeholder="0"
                                       autoFocus
+                                      aria-describedby={`current-value-hint-${fundKey}`}
+                                      aria-required="false"
                                     />
+                                    <p id={`current-value-hint-${fundKey}`} className="sr-only">
+                                      Fonun mevcut değerini Türk Lirası cinsinden girin. Kar/zarar otomatik hesaplanacaktır.
+                                    </p>
                                   </div>
                                   {(() => {
                                     const value = parseFloat(currentValueInput.replace(',', '.')) || 0;
@@ -450,11 +482,16 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                     const isProfit = profitLoss >= 0;
                                     
                                     return (
-                                      <div className={`mb-4 p-3 rounded-lg ${
-                                        isProfit 
-                                          ? 'bg-green-100 dark:bg-green-900/30' 
-                                          : 'bg-red-100 dark:bg-red-900/30'
-                                      }`}>
+                                      <div 
+                                        className={`mb-4 p-3 rounded-lg ${
+                                          isProfit 
+                                            ? 'bg-green-100 dark:bg-green-900/30' 
+                                            : 'bg-red-100 dark:bg-red-900/30'
+                                        }`}
+                                        role="status"
+                                        aria-live="polite"
+                                        aria-atomic="true"
+                                      >
                                         <div className="flex items-center gap-2">
                                           <span className={`font-semibold ${
                                             isProfit 
@@ -467,7 +504,9 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                             isProfit 
                                               ? 'text-green-600 dark:text-green-400' 
                                               : 'text-red-600 dark:text-red-400'
-                                          }`}>
+                                          }`}
+                                          aria-label={`${isProfit ? 'Kar' : 'Zarar'}: ${formatCurrency(Math.abs(profitLoss))}, yüzde: ${formatPercentage(profitLossPercentage)}`}
+                                          >
                                             {formatCurrency(Math.abs(profitLoss))} ({formatPercentage(profitLossPercentage)})
                                           </span>
                                         </div>
@@ -477,13 +516,15 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                   <div className="flex gap-3">
                                     <button
                                       onClick={handleSaveCurrentValue}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
+                                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                      aria-label="Güncel değeri kaydet"
                                     >
                                       Kaydet
                                     </button>
                                     <button
                                       onClick={handleCancelCurrentValue}
-                                      className="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                                      className="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                                      aria-label="Güncel değer girişini iptal et"
                                     >
                                       İptal
                                     </button>
@@ -494,7 +535,7 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
                                   {fundInvestments.map(renderInvestmentItem)}
                                 </div>
                               )}
-                            </>
+                            </div>
                           )}
                         </div>
                       );
@@ -507,11 +548,11 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
       </div>
 
       {investments.length === 0 && (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
           <p className="text-lg mb-2">Henüz yatırım eklenmemiş</p>
           <p className="text-sm">Yeni yatırım eklemek için yukarıdaki butona tıklayın</p>
         </div>
       )}
-    </div>
+    </section>
   );
 }

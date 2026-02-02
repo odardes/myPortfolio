@@ -36,15 +36,19 @@ export default function ThemeToggle() {
     }
   };
 
+  const label = getLabel();
+  const Icon = getIcon();
+  
   return (
     <button
       onClick={toggleTheme}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-      aria-label="Tema değiştir"
-      title={getLabel()}
+      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      aria-label={`Tema değiştir: Şu anki tema ${label}`}
+      aria-pressed="false"
+      title={label}
     >
-      {getIcon()}
-      <span className="hidden sm:inline text-sm font-medium">{getLabel()}</span>
+      <span aria-hidden="true">{Icon}</span>
+      <span className="hidden sm:inline text-sm font-medium">{label}</span>
     </button>
   );
 }
