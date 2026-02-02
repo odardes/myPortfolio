@@ -5,7 +5,7 @@ import { formatCurrency, formatDate, getTypeColor, getTypeLabel, calculateProfit
 import { Trash2, Edit, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import InvestmentForm from './InvestmentForm';
-import { saveInvestmentsSync } from '@/lib/storage';
+import { saveInvestmentsSync, saveInvestments } from '@/lib/storage';
 
 interface InvestmentListProps {
   investments: Investment[];
@@ -65,7 +65,7 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
     setCurrentValueInput(totalCurrentValue > 0 ? totalCurrentValue.toFixed(2).replace('.', ',') : '');
   };
 
-  const handleSaveCurrentValue = () => {
+  const handleSaveCurrentValue = async () => {
     if (!editingCurrentValue) return;
     
     const { fundName, type } = editingCurrentValue;
@@ -85,7 +85,17 @@ export default function InvestmentList({ investments, onUpdate }: InvestmentList
       return inv;
     });
     
+    // Önce localStorage'a kaydet (hızlı erişim)
     saveInvestmentsSync(updated);
+    
+    // Sonra Firebase'e de kaydet (senkronizasyon için)
+    try {
+      await saveInvestments(updated);
+    } catch (error) {
+      // Firebase hatası olsa bile localStorage'da var, sessizce devam et
+      console.warn('Firebase sync failed, data saved locally:', error);
+    }
+    
     onUpdate();
     setEditingCurrentValue(null);
     setCurrentValueInput('');

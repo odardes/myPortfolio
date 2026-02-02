@@ -110,7 +110,7 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
                 if (props.payload?.currentValue !== undefined && props.payload.currentValue > 0) {
                   return <circle cx={props.cx} cy={props.cy} r={5} fill="#10b981" />;
                 }
-                return null;
+                return <circle cx={props.cx} cy={props.cy} r={0} fill="transparent" />;
               }}
               activeDot={{ r: 7, fill: '#10b981' }}
               name="currentValue"

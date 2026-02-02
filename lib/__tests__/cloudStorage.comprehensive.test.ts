@@ -142,7 +142,7 @@ describe('cloudStorage Comprehensive', () => {
 
   it('should save fund current values to cloud', async () => {
     const values: FundCurrentValue[] = [
-      { fundName: 'Altın Fon', type: 'fon', currentValue: 1200 },
+      { fundName: 'Altın Fon', type: 'fon', currentValue: 1200, lastUpdated: '2025-01-01' },
     ];
     
     try {

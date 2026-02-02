@@ -2,6 +2,7 @@ import {
   getInvestments,
   saveInvestments,
 } from '../storage';
+import { Investment } from '@/types/investment';
 
 // Mock cloudStorage
 jest.mock('../cloudStorage', () => ({
@@ -58,7 +59,7 @@ describe('saveInvestments (async)', () => {
   });
 
   it('should save investments to localStorage', async () => {
-    const investments = [
+    const investments: Investment[] = [
       { id: '1', date: '2025-01-01', type: 'fon', fundName: 'Altın Fon', amount: 1000 },
     ];
 
@@ -71,7 +72,7 @@ describe('saveInvestments (async)', () => {
       throw new Error('Storage quota exceeded');
     });
 
-    const investments = [
+    const investments: Investment[] = [
       { id: '1', date: '2025-01-01', type: 'fon', fundName: 'Altın Fon', amount: 1000 },
     ];
 
