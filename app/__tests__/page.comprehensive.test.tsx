@@ -16,6 +16,11 @@ jest.mock('@/lib/storage', () => ({
   saveInvestments: (data: Investment[]) => mockSaveInvestments(data),
 }));
 
+jest.mock('@/lib/cloudStorage', () => ({
+  subscribeToInvestments: jest.fn(() => null),
+  isFirebaseAvailable: jest.fn(() => false),
+}));
+
 const renderWithTheme = (component: React.ReactElement) => {
   return render(<ThemeProvider>{component}</ThemeProvider>);
 };

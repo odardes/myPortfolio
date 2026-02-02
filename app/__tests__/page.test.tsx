@@ -10,6 +10,12 @@ jest.mock('@/lib/storage', () => ({
   saveInvestments: jest.fn(() => Promise.resolve()),
 }));
 
+// Mock cloudStorage
+jest.mock('@/lib/cloudStorage', () => ({
+  subscribeToInvestments: jest.fn(() => null),
+  isFirebaseAvailable: jest.fn(() => false),
+}));
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
