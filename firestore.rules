@@ -1,16 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Investments collection - public read/write for shared-user
     match /investments/{userId} {
-      // Allow read and write for all users (since we use shared-user)
-      allow read, write: if true;
+      allow read, write: if userId == 'portfolio-user-shared';
     }
-    
-    // Fund current values collection - public read/write for shared-user
-    match /fund-current-values/{userId} {
-      // Allow read and write for all users (since we use shared-user)
-      allow read, write: if true;
+    match /fundValues/{userId} {
+      allow read, write: if userId == 'portfolio-user-shared';
     }
   }
 }
