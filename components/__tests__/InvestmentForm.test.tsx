@@ -16,7 +16,7 @@ describe('InvestmentForm', () => {
     expect(screen.getByText(/Tarih/i)).toBeInTheDocument();
     expect(screen.getByText(/Yatırım Türü/i)).toBeInTheDocument();
     expect(screen.getByText(/Fon Adı/i)).toBeInTheDocument();
-    expect(screen.getByText(/Tutar/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tutar \(TRY\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Para Birimi/i)).toBeInTheDocument();
     expect(screen.getByText(/Güncel Değer/i)).toBeInTheDocument();
   });
