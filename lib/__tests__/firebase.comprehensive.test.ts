@@ -4,21 +4,21 @@ import { getFirestore } from 'firebase/firestore';
 
 // Mock firebase/app
 const mockInitializeApp = jest.fn();
-const mockGetApps = jest.fn(() => []);
+const mockGetApps = jest.fn<unknown[], []>(() => []);
 const mockGetAuth = jest.fn(() => ({}));
 const mockGetFirestore = jest.fn(() => ({}));
 
 jest.mock('firebase/app', () => ({
-  initializeApp: (...args: any[]) => mockInitializeApp(...args),
-  getApps: () => mockGetApps(),
+  initializeApp: jest.fn(),
+  getApps: jest.fn(),
 }));
 
 jest.mock('firebase/auth', () => ({
-  getAuth: (...args: any[]) => mockGetAuth(...args),
+  getAuth: jest.fn(),
 }));
 
 jest.mock('firebase/firestore', () => ({
-  getFirestore: (...args: any[]) => mockGetFirestore(...args),
+  getFirestore: jest.fn(),
 }));
 
 describe('firebase', () => {
@@ -67,7 +67,7 @@ describe('firebase', () => {
 
   it('should use existing app when apps array is not empty', () => {
     const mockApp = { name: 'test-app' };
-    mockGetApps.mockReturnValue([mockApp]);
+    (mockGetApps as jest.Mock<unknown[], []>).mockReturnValue([mockApp] as unknown[]);
     
     // When apps exist, should use existing app
     expect(mockGetApps().length).toBeGreaterThan(0);
