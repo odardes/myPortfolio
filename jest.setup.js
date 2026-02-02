@@ -29,3 +29,55 @@ if (typeof global.TextEncoder === 'undefined') {
   global.TextEncoder = TextEncoder;
   global.TextDecoder = TextDecoder;
 }
+
+// Mock ReadableStream for Firebase
+if (typeof global.ReadableStream === 'undefined') {
+  global.ReadableStream = class ReadableStream {
+    constructor() {}
+    getReader() {
+      return {
+        read: () => Promise.resolve({ done: true, value: undefined }),
+        cancel: () => Promise.resolve(),
+        releaseLock: () => {},
+      };
+    }
+  };
+}
+
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.localStorage = localStorageMock;
+
+// Mock URL.createObjectURL and revokeObjectURL
+global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+global.URL.revokeObjectURL = jest.fn();
+
+// Mock document.createElement for download functions
+const originalCreateElement = document.createElement;
+document.createElement = jest.fn((tagName) => {
+  if (tagName === 'a') {
+    const link = originalCreateElement.call(document, tagName);
+    link.href = '';
+    link.download = '';
+    link.click = jest.fn();
+    return link;
+  }
+  return originalCreateElement.call(document, tagName);
+});
+
+// Mock Firebase
+jest.mock('@/lib/firebase', () => ({
+  db: null,
+  auth: null,
+}));
+
+jest.mock('@/lib/cloudStorage', () => ({
+  getInvestmentsFromCloud: jest.fn(() => Promise.resolve([])),
+  saveInvestmentsToCloud: jest.fn(() => Promise.resolve()),
+  isFirebaseAvailable: jest.fn(() => false),
+}));

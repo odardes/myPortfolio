@@ -153,7 +153,7 @@ function migrateInvestments(investments: Investment[]): Investment[] {
     // Eski kategori yapısından yeni yapıya geçiş
     if (typeStr === 'gümüş') {
       type = 'fon';
-      if (fundName.includes('Gümüş')) {
+      if (fundName.includes('Gümüş') || fundName === 'GTZ') {
         fundName = 'Gümüş Fon';
       }
     } else if (typeStr === 'altın') {

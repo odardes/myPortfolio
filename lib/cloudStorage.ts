@@ -14,7 +14,7 @@ const FUND_VALUES_COLLECTION = 'fund-current-values';
 const STATIC_USER_ID = 'shared-user'; // Tüm kullanıcılar için ortak ID
 
 // Firebase kullanılabilir mi kontrolü
-function isFirebaseAvailable(): boolean {
+export function isFirebaseAvailable(): boolean {
   return typeof window !== 'undefined' && 
          !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
          !!db &&
