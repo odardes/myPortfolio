@@ -91,7 +91,7 @@ export async function saveInvestments(investments: Investment[]): Promise<void> 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(investments));
   } catch (error) {
-    // Silent fail
+    console.warn('Failed to save to localStorage:', error);
   }
   
   // Sonra cloud'a kaydet (senkronizasyon için)
@@ -99,7 +99,8 @@ export async function saveInvestments(investments: Investment[]): Promise<void> 
     try {
       await saveInvestmentsToCloud(investments);
     } catch (error) {
-      // Silent fail - localStorage'da var
+      console.warn('Failed to save to Firebase:', error);
+      // localStorage'da var, devam et
     }
   }
 }
@@ -112,10 +113,12 @@ export function saveInvestmentsSync(investments: Investment[]): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(investments));
     // Arka planda cloud'a da kaydet (async)
     if (isCloudAvailable()) {
-      saveInvestmentsToCloud(investments).catch(() => {});
+      saveInvestmentsToCloud(investments).catch((error) => {
+        console.warn('Failed to save to Firebase (async):', error);
+      });
     }
   } catch (error) {
-    // Silent fail
+    console.warn('Failed to save to localStorage:', error);
   }
 }
 

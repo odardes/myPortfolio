@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Investment } from '@/types/investment';
 import { getInvestmentsSync, saveInvestmentsSync, getInvestments, saveInvestments } from '@/lib/storage';
+import { subscribeToInvestments } from '@/lib/cloudStorage';
 import { calculateSummary, calculatePortfolioStats, formatCurrency, formatPercentage, calculateTimeSeriesData } from '@/lib/utils';
 import SummaryCard from '@/components/SummaryCard';
 import PortfolioChart from '@/components/PortfolioChart';
@@ -28,6 +29,26 @@ export default function Home() {
       }
     };
     loadData();
+
+    // Real-time sync için Firebase listener ekle
+    const unsubscribe = subscribeToInvestments((cloudInvestments) => {
+      if (cloudInvestments && cloudInvestments.length > 0) {
+        // Firebase'den gelen veriyi kullan ve localStorage'a kaydet
+        setInvestments(cloudInvestments);
+        try {
+          localStorage.setItem('portfolio-investments', JSON.stringify(cloudInvestments));
+        } catch (error) {
+          console.warn('Failed to save to localStorage:', error);
+        }
+      }
+    });
+
+    // Cleanup
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleUpdate = async () => {
